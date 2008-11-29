@@ -160,6 +160,21 @@
 				RelativePath="..\..\src\shared\Database\MySQLDelayThread.h">
 			</File>
 			<File
+				RelativePath="..\..\src\shared\Database\MySQLPreparedStatement.cpp">
+			</File>
+			<File
+				RelativePath="..\..\src\shared\Database\MySQLPreparedStatement.h">
+			</File>
+			<File
+				RelativePath="..\..\src\shared\Database\PGSQLPreparedStatement.cpp">
+			</File>
+			<File
+				RelativePath="..\..\src\shared\Database\PGSQLPreparedStatement.h">
+			</File>
+			<File
+				RelativePath="..\..\src\shared\Database\PreparedStatement.h">
+			</File>
+			<File
 				RelativePath="..\..\src\shared\Database\QueryResult.h">
 			</File>
 			<File
