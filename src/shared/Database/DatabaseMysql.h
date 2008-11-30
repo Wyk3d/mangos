@@ -36,6 +36,7 @@
 class MANGOS_DLL_SPEC DatabaseMysql : public Database
 {
     friend class MaNGOS::OperatorNew<DatabaseMysql>;
+    friend class MySQLPreparedStatement;
 
     public:
         DatabaseMysql();

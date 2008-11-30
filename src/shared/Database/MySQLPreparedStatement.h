@@ -21,19 +21,30 @@
 
 #include "Database/PreparedStatement.h"
 
+#ifdef WIN32
+#define FD_SETSIZE 1024
+#include <winsock2.h>
+#include <mysql/mysql.h>
+#else
+#include <mysql.h>
+#endif
+
 class DatabaseMysql;
 
 class MySQLPreparedStatement : public PreparedStatement
 {
     public:
         MySQLPreparedStatement(DatabaseMysql *db, const char *sql);
+        ~MySQLPreparedStatement();
         
         void Execute();
         QueryResult * Query();
         void PExecute(...);
         QueryResult * PQuery(...);
     private:
-        DatabaseMysql *m_db;
+        MYSQL_STMT * m_stmt;
+        char *format;
+        size_t format_len;
 };
 
 #endif
