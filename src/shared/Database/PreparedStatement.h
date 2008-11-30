@@ -19,13 +19,18 @@
 #ifndef _PREPARED_STATEMENT_H_
 #define _PREPARED_STATEMENT_H_
 
+#include "QueryResult.h"
+
 class PreparedStatement
 {
     public:
-        PreparedStatement();
-        virtual ~PreparedStatement();
+        PreparedStatement() {}
+        virtual ~PreparedStatement() {}
         
-        virtual void Execute(...);
+        virtual void Execute() = 0;
+        virtual QueryResult * Query() = 0;
+        virtual void PExecute(...) = 0;
+        virtual QueryResult * PQuery(...) = 0;
 };
 
 #endif

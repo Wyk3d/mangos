@@ -24,9 +24,14 @@
 class MySQLPreparedStatement : public PreparedStatement
 {
     public:
-        MySQLPreparedStatement();
+        MySQLPreparedStatement(DatabaseMysql *db, const char *stmt_format);
         
+        void Execute();
+        QueryResult * Query();
+        void PExecute(...);
+        QueryResult * PQuery(...);
     private:
+        DatabaseMysql *m_db;
 };
 
 #endif

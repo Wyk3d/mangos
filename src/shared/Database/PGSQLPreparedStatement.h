@@ -24,9 +24,14 @@
 class PGSQLPreparedStatement : public PreparedStatement
 {
     public:
-        PGSQLPreparedStatement();
+        PGSQLPreparedStatement(DatabasePostgre *db, const char *stmt_format);
         
+        void Execute();
+        QueryResult * Query();
+        void PExecute(...);
+        QueryResult * PQuery(...);
     private:
+        DatabasePostgre *m_db;
 };
 
 #endif

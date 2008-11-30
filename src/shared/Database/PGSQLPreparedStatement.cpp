@@ -17,3 +17,28 @@
  */
 
 #include "PGSQLPreparedStatement.h"
+
+PGSQLPreparedStatement(DatabasePostgre *db, const char *stmt_format)
+{
+
+}
+
+void PGSQLPreparedStatement::Execute()
+{
+
+}
+
+QueryResult * PGSQLPreparedStatement::Query()
+{
+    return NULL;
+}
+
+void PGSQLPreparedStatement::PExecute(...)
+{
+
+}
+
+QueryResult * PGSQLPreparedStatement::PQuery(...)
+{
+    return NULL;
+}

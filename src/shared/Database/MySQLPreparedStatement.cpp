@@ -17,3 +17,28 @@
  */
 
 #include "MySQLPreparedStatement.h"
+
+PGSQLPreparedStatement(DatabaseMysql *db, const char *stmt_format)
+{
+
+}
+
+void MySQLPreparedStatement::Execute()
+{
+
+}
+
+QueryResult * MySQLPreparedStatement::Query()
+{
+    return NULL;
+}
+
+void MySQLPreparedStatement::PExecute(...)
+{
+
+}
+
+QueryResult * MySQLPreparedStatement::PQuery(...)
+{
+    return NULL;
+}
