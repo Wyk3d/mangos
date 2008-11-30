@@ -16,6 +16,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifndef _PREPARED_STATEMENT_H_
+#define _PREPARED_STATEMENT_H_
+
 class PreparedStatement
 {
     public:
@@ -24,3 +27,5 @@ class PreparedStatement
         
         virtual void Execute(...);
 };
+
+#endif

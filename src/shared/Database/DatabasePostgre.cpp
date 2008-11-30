@@ -25,6 +25,7 @@
 #include "DatabaseEnv.h"
 #include "Database/PGSQLDelayThread.h"
 #include "Database/SqlOperations.h"
+#include "Database/PGSQLPreparedStatement.h"
 #include "Timer.h"
 
 void DatabasePostgre::ThreadStart()
@@ -342,4 +343,10 @@ void DatabasePostgre::HaltDelayThread()
     m_delayThread = NULL;
     m_threadBody = NULL;
 }
+
+PreparedStatement * DatabasePostgre::PrepareStatement(const char *format)
+{
+    return new PGSQLPreparedStatement();
+}
+
 #endif

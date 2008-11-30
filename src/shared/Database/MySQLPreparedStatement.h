@@ -16,7 +16,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "PreparedStatement.h"
+#ifndef _MYSQL_PREPARED_STATEMENT_H_
+#define _MYSQL_PREPARED_STATEMENT_H_
+
+#include "Database/PreparedStatement.h"
 
 class MySQLPreparedStatement : public PreparedStatement
 {
@@ -25,3 +28,5 @@ class MySQLPreparedStatement : public PreparedStatement
         
     private:
 };
+
+#endif

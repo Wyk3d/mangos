@@ -23,6 +23,7 @@
 #include "../src/zthread/ThreadImpl.h"
 #include "Utilities/UnorderedMap.h"
 #include "Database/SqlDelayThread.h"
+#include "Database/PreparedStatement.h"
 
 class SqlTransaction;
 class SqlResultQueue;
@@ -84,6 +85,8 @@ class MANGOS_DLL_SPEC Database
         bool PExecute(const char *format,...) ATTR_PRINTF(2,3);
         virtual bool DirectExecute(const char* sql) = 0;
         bool DirectPExecute(const char *format,...) ATTR_PRINTF(2,3);
+
+        virtual PreparedStatement * PrepareStatement(const char *format) = 0;
 
         // Writes SQL commands to a LOG file (see mangosd.conf "LogSQL")
         bool PExecuteLog(const char *format,...) ATTR_PRINTF(2,3);

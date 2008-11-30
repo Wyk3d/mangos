@@ -25,6 +25,7 @@
 #include "DatabaseEnv.h"
 #include "Database/MySQLDelayThread.h"
 #include "Database/SqlOperations.h"
+#include "Database/MySQLPreparedStatement.h"
 #include "Timer.h"
 
 void DatabaseMysql::ThreadStart()
@@ -405,4 +406,10 @@ void DatabaseMysql::HaltDelayThread()
     m_delayThread = NULL;
     m_threadBody = NULL;
 }
+
+PreparedStatement * DatabaseMysql::PrepareStatement(const char *format)
+{
+    return new MySQLPreparedStatement();
+}
+
 #endif
