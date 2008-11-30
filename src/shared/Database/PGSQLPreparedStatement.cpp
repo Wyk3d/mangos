@@ -16,9 +16,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "PGSQLPreparedStatement.h"
+#include "Database/DatabaseEnv.h"
+#include "Database/PGSQLPreparedStatement.h"
 
-PGSQLPreparedStatement(DatabasePostgre *db, const char *stmt_format)
+
+PGSQLPreparedStatement::PGSQLPreparedStatement(DatabasePostgre *db, const char *sql)
 {
 
 }

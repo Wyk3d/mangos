@@ -52,7 +52,7 @@ class MANGOS_DLL_SPEC DatabaseMysql : public Database
         bool BeginTransaction();
         bool CommitTransaction();
         bool RollbackTransaction();
-        PreparedStatement * PrepareStatement(const char *format);
+        PreparedStatement * PrepareStatement(const char *sql);
 
         operator bool () const { return mMysql != NULL; }
 

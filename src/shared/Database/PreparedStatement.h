@@ -19,7 +19,7 @@
 #ifndef _PREPARED_STATEMENT_H_
 #define _PREPARED_STATEMENT_H_
 
-#include "QueryResult.h"
+class QueryResult;
 
 class PreparedStatement
 {

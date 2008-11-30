@@ -458,9 +458,7 @@
 				<Tool
 					Name="VCCustomBuildTool"
 					Description="Extract revision"
-					CommandLine="cd &quot;$(SolutionDir)..\src\shared&quot;
-&quot;$(TargetDir)\..\genrevision__$(PlatformName)_$(ConfigurationName)\genrevision.exe&quot; &quot;..\..&quot;
-"
+					CommandLine=""
 					AdditionalDependencies="$(SolutionDir)../.svn/entries;$(SolutionDir)../_svn/entries;$(SolutionDir)../.git/FETCH_HEAD"
 					Outputs="revision.h"/>
 			</FileConfiguration>

@@ -21,10 +21,12 @@
 
 #include "Database/PreparedStatement.h"
 
+class DatabasePostgre;
+
 class PGSQLPreparedStatement : public PreparedStatement
 {
     public:
-        PGSQLPreparedStatement(DatabasePostgre *db, const char *stmt_format);
+        PGSQLPreparedStatement(DatabasePostgre *db, const char *sql);
         
         void Execute();
         QueryResult * Query();

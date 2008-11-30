@@ -21,10 +21,12 @@
 
 #include "Database/PreparedStatement.h"
 
+class DatabaseMysql;
+
 class MySQLPreparedStatement : public PreparedStatement
 {
     public:
-        MySQLPreparedStatement(DatabaseMysql *db, const char *stmt_format);
+        MySQLPreparedStatement(DatabaseMysql *db, const char *sql);
         
         void Execute();
         QueryResult * Query();
