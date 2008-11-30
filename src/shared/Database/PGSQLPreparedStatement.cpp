@@ -35,12 +35,12 @@ QueryResult * PGSQLPreparedStatement::Query()
     return NULL;
 }
 
-void PGSQLPreparedStatement::PExecute(...)
+void PGSQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
 
 }
 
-QueryResult * PGSQLPreparedStatement::PQuery(...)
+QueryResult * PGSQLPreparedStatement::_PQuery(void *arg1, va_list ap)
 {
     return NULL;
 }

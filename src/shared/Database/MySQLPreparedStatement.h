@@ -39,9 +39,10 @@ class MySQLPreparedStatement : public PreparedStatement
         
         void Execute();
         QueryResult * Query();
-        void PExecute(...);
-        QueryResult * PQuery(...);
     private:
+        void _PExecute(void *arg1, va_list ap);
+        QueryResult * _PQuery(void *arg1, va_list ap);
+
         MYSQL_STMT * m_stmt;
         char *format;
         size_t format_len;

@@ -41,6 +41,9 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
             p++;
             if(*p != '%')
             {
+                if(*p == '\0')
+                    break;
+
                 *q = '?';
                 switch(*p)
                 {
@@ -82,17 +85,20 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     }
 
     delete[] stmt_str;
-    format = (char*)realloc(format, format_len);
+    if(format_len == 0)
+    {
+        free(format);
+        format = NULL;
+    }
+    else
+        format = (char*)realloc(format, format_len);
 }
 
 MySQLPreparedStatement::~MySQLPreparedStatement()
 {
     free(format);
     if(mysql_stmt_close(m_stmt))
-    {
         sLog.outError("failed while closing the prepared statement");
-        assert(false);
-    }
 }
 
 void MySQLPreparedStatement::Execute()
@@ -105,12 +111,12 @@ QueryResult * MySQLPreparedStatement::Query()
     return NULL;
 }
 
-void MySQLPreparedStatement::PExecute(...)
+void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
 
 }
 
-QueryResult * MySQLPreparedStatement::PQuery(...)
+QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)
 {
     return NULL;
 }

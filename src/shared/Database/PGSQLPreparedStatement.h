@@ -30,9 +30,10 @@ class PGSQLPreparedStatement : public PreparedStatement
         
         void Execute();
         QueryResult * Query();
-        void PExecute(...);
-        QueryResult * PQuery(...);
     private:
+        void _PExecute(void *arg1, va_list ap);
+        QueryResult * _PQuery(void *arg1, va_list ap);
+
         DatabasePostgre *m_db;
 };
 

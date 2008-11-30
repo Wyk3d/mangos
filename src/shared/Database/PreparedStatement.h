@@ -19,6 +19,8 @@
 #ifndef _PREPARED_STATEMENT_H_
 #define _PREPARED_STATEMENT_H_
 
+#include <cstdarg>
+
 class QueryResult;
 
 class PreparedStatement
@@ -29,8 +31,16 @@ class PreparedStatement
         
         virtual void Execute() = 0;
         virtual QueryResult * Query() = 0;
-        virtual void PExecute(...) = 0;
-        virtual QueryResult * PQuery(...) = 0;
+
+        // used as: void PExecute(...);
+        template<class T> void PExecute(T arg1, ...)
+            { va_list ap; va_start(ap, arg1); _PExecute((void*)&arg1, ap); va_end(ap); }
+        // used as: QueryResult * PQuery(...);
+        template<class T> QueryResult * PQuery(T arg1, ...)
+            { va_list ap; va_start(ap, arg1); QueryResult * ret = _PQuery((void*)&arg1, ap); va_end(ap); return ret; }
+    private:
+        virtual void _PExecute(void *arg1, va_list ap);
+        virtual QueryResult * _PQuery(void *arg1, va_list ap);
 };
 
 #endif
