@@ -27,9 +27,13 @@ template< class D >
 class PreparedStatementBase
 {
     public:
+        void DirectExecute();
         void Execute();
         QueryResult * Query();
 
+        // used as: void DirectPExecute(...);
+        template<class T> void DirectPExecute(T arg1, ...)
+            { va_list ap; va_start(ap, arg1); (static_cast<D*>(this))->_DirectPExecute((void*)&arg1, ap); va_end(ap); }
         // used as: void PExecute(...);
         template<class T> void PExecute(T arg1, ...)
             { va_list ap; va_start(ap, arg1); (static_cast<D*>(this))->_PExecute((void*)&arg1, ap); va_end(ap); }
@@ -37,6 +41,7 @@ class PreparedStatementBase
         template<class T> QueryResult * PQuery(T arg1, ...)
             { va_list ap; va_start(ap, arg1); QueryResult * ret = (static_cast<D*>(this))->_PQuery((void*)&arg1, ap); va_end(ap); return ret; }
     private:
+        void _DirectPExecute(void *arg1, va_list ap);
         void _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
 };

@@ -26,6 +26,7 @@
 #include "zthread/Thread.h"
 #include <queue>
 #include "Utilities/Callback.h"
+#include "Database/PreparedStatement.h"
 
 /// ---- BASE ---
 
@@ -49,6 +50,17 @@ class SqlStatement : public SqlOperation
     public:
         SqlStatement(const char *sql) : m_sql(strdup(sql)){}
         ~SqlStatement() { void* tofree = const_cast<char*>(m_sql); free(tofree); }
+        void Execute(Database *db);
+};
+
+class SqlPreparedStatement : public SqlOperation
+{
+    private:
+        PreparedStmt *m_stmt;
+        uint64 *m_data;
+    public:
+        SqlPreparedStatement(PreparedStmt *stmt, uint64 *data) : m_stmt(stmt), m_data(data) {}
+        ~SqlPreparedStatement() {}
         void Execute(Database *db);
 };
 

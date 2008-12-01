@@ -36,22 +36,29 @@ class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatem
 {
     template< uint32 N > friend class MySQLPreparedStatementBinder;
     public:
-        MySQLPreparedStatement(DatabaseMysql *db, const char *sql);
+        MySQLPreparedStatement(DatabaseMysql *db, const char *sql, va_list ap);
         ~MySQLPreparedStatement();
         
+        void DirectExecute();
         void Execute();
         QueryResult * Query();
 
-        void Execute(MYSQL_BIND *binds);
+        void DirectExecute(MYSQL_BIND *binds);
     private:
+        void _DirectPExecute(void *arg1, va_list ap);
         void _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
 
         static void _set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len);
 
         MYSQL_STMT * m_stmt;
-        enum_field_types *format;
-        size_t format_len;
+        enum_field_types * format;
+        int format_len;
+        int nr_blobs;
+        int nr_strings;
+        MYSQL_BIND * m_bind;
+        uint64 * m_data;
+        int * m_str_idx;
 };
 
 template< uint32 N >
@@ -111,7 +118,7 @@ class MySQLPreparedStatementBinder : public PreparedStatementBinderBase< MySQLPr
 
         void Execute()
         {
-            m_stmt->Execute(m_bind);
+            m_stmt->DirectExecute(m_bind);
         }
 
     private:

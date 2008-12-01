@@ -29,6 +29,11 @@ void SqlStatement::Execute(Database *db)
     db->DirectExecute(m_sql);
 }
 
+void SqlPreparedStatement::Execute(Database *db)
+{
+
+}
+
 void SqlTransaction::Execute(Database *db)
 {
     if(m_queue.empty())

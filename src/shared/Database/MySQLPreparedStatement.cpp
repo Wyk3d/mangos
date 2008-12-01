@@ -22,7 +22,7 @@
 
 #define MAX_NR_ARGUMENTS 2048
 
-MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sql)
+MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sql, va_list ap)
 {
     m_stmt = mysql_stmt_init(db->mMysql);
     if(!m_stmt)
@@ -36,6 +36,8 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
 
     format = (enum_field_types*)malloc(sql_len*sizeof(enum_field_types));
     format_len = 0;
+    nr_blobs = 0;
+    nr_strings = 0;
     
     for(p = (char*)sql, q = stmt_str; *p != '\0'; p++, q++)
     {
@@ -51,6 +53,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
                 switch(*p)
                 {
                     case 'b':
+                        nr_blobs++;
                         format[format_len++] = MYSQL_TYPE_BLOB;
                         break;
                     case 'c':
@@ -65,6 +68,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
                         format[format_len++] = MYSQL_TYPE_FLOAT;
                         break;
                     case 's':
+                        nr_strings++;
                         format[format_len++] = MYSQL_TYPE_STRING;
                         break;
                     default:
@@ -83,13 +87,6 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
 
     assert(format_len <= MAX_NR_ARGUMENTS);
 
-    if(mysql_stmt_prepare(m_stmt, stmt_str, q - stmt_str))
-    {
-        sLog.outError("mysql_stmt_prepare(), %s", mysql_stmt_error(m_stmt));
-        assert(false);
-    }
-
-    delete[] stmt_str;
     if(format_len == 0)
     {
         free(format);
@@ -97,6 +94,44 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     }
     else
         format = (enum_field_types*)realloc(format, format_len*sizeof(enum_field_types));
+
+    if(mysql_stmt_prepare(m_stmt, stmt_str, q - stmt_str))
+    {
+        sLog.outError("mysql_stmt_prepare(), %s", mysql_stmt_error(m_stmt));
+        assert(false);
+    }
+    delete[] stmt_str;
+
+    m_bind = new MYSQL_BIND[format_len];
+    m_data = new uint64[format_len + nr_blobs + nr_strings];
+    m_str_idx = new int[format_len];
+
+    int poz = 0;
+    int str_poz = 0;
+
+    for(int i = 0; i < format_len; i++, poz++)
+    {
+        switch(format[i])
+        {
+            case MYSQL_TYPE_BLOB:
+            case MYSQL_TYPE_STRING:
+                _set_bind(m_bind[i], format[i], NULL, va_arg(ap, uint32), (unsigned long*)&m_data[poz]);
+                m_str_idx[str_poz] = i;
+                str_poz++;
+                break;
+            case MYSQL_TYPE_TINY:
+            case MYSQL_TYPE_LONG:
+            case MYSQL_TYPE_FLOAT:
+                _set_bind(m_bind[i], format[i], (char*)&m_data[poz], 0, NULL);
+                break;
+        }
+    }
+
+    if(mysql_stmt_bind_param(m_stmt, m_bind))
+    {
+        sLog.outError("mysql_stmt_bind_param() failed, %s", mysql_stmt_error(m_stmt));
+        assert(false);
+    }
 }
 
 MySQLPreparedStatement::~MySQLPreparedStatement()
@@ -106,7 +141,7 @@ MySQLPreparedStatement::~MySQLPreparedStatement()
         sLog.outError("failed while closing the prepared statement");
 }
 
-void MySQLPreparedStatement::Execute()
+void MySQLPreparedStatement::DirectExecute()
 {
     if(mysql_stmt_execute(m_stmt))
     {
@@ -116,7 +151,7 @@ void MySQLPreparedStatement::Execute()
     }
 }
 
-void MySQLPreparedStatement::Execute(MYSQL_BIND *binds)
+void MySQLPreparedStatement::DirectExecute(MYSQL_BIND *binds)
 {
     if(mysql_stmt_bind_param(m_stmt, binds))
     {
@@ -124,7 +159,7 @@ void MySQLPreparedStatement::Execute(MYSQL_BIND *binds)
         assert(false);
     }
 
-    Execute();
+    DirectExecute();
 }
 
 QueryResult * MySQLPreparedStatement::Query()
@@ -142,57 +177,136 @@ void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, 
 
 void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
-    MYSQL_BIND bind[MAX_NR_ARGUMENTS];
-    unsigned long length[MAX_NR_ARGUMENTS];
+    uint64 *data = new uint64[format_len];
+    char **bufs = new char*[nr_blobs+nr_strings];
+
+    uint32 buf_len[MAX_NR_ARGUMENTS];
     char *aux;
 
-    memset(bind, 0, format_len * sizeof(MYSQL_BIND));
-
+    int total_buf_len = 0;
+    int i, j = 0;
     switch(format[0])
     {
         case MYSQL_TYPE_BLOB:
-            _set_bind(bind[0], format[0], va_arg(ap, char *), *(unsigned long*)arg1, (unsigned long*)arg1);                         
+            buf_len[j] = *(uint32*)arg1;
+            bufs[j] = va_arg(ap, char*);
+            *(uint32*)&data[0] = buf_len[j];
+            total_buf_len += buf_len[j];
+            j++;
             break;
         case MYSQL_TYPE_TINY:
+            *(char*)&data[0] = *(char*)arg1;
+            break;
         case MYSQL_TYPE_LONG:
+            *(unsigned long*)&data[0] = *(unsigned long*)arg1;
+            break;
         case MYSQL_TYPE_FLOAT:
-            _set_bind(bind[0], format[0], (char *)arg1, 0, NULL);
+            *(float*)&data[0] = *(float*)arg1;
             break;
         case MYSQL_TYPE_STRING:
-            length[0] = strlen((char*)arg1);
-            _set_bind(bind[0], format[0], (char *)arg1, length[0]+1, &length[0]);
+            buf_len[j] = (uint32)strlen((char*)arg1);
+            bufs[j] = (char*)arg1;
+            *(uint32*)&data[0] = buf_len[j];
+            total_buf_len += ++buf_len[j];
+            j++;
             break;
     }
 
-    for(int i = 1; i < format_len; i++)
+    for(i = 1; i < format_len; i++)
     {
         switch(format[i])
         {
             case MYSQL_TYPE_BLOB:
-                length[i] = va_arg(ap, unsigned long);
-                _set_bind(bind[i], format[i], va_arg(ap, char *), length[i], &length[i]);
+                buf_len[j] = va_arg(ap, uint32);
+                bufs[j] = va_arg(ap, char*);
+                *(uint32*)&data[i] = buf_len[j];
+                total_buf_len += buf_len[j];
+                j++;
                 break;
             case MYSQL_TYPE_TINY:
-                // note: the standard doesn't say va_arg has to be an lvalue
-                // but since it is on most platforms, it's better to keep it in this form
-                // for performance reasons (one less copy)
-                _set_bind(bind[i], format[i], (char*)&va_arg(ap, char), 0, NULL);
+                *(char*)&data[i] = va_arg(ap, char);
                 break;
             case MYSQL_TYPE_LONG:
-                _set_bind(bind[i], format[i], (char*)&va_arg(ap, unsigned long), 0, NULL);
+                *(unsigned long*)&data[i] = va_arg(ap, unsigned long);
                 break;
             case MYSQL_TYPE_FLOAT:
-                _set_bind(bind[i], format[i], (char*)&va_arg(ap, float), 0, NULL);
+                *(float*)&data[i] = va_arg(ap, float);
                 break;
             case MYSQL_TYPE_STRING:
                 aux = va_arg(ap, char*);
-                length[i] = strlen(aux);
-                _set_bind(bind[i], format[i], aux, length[i]+1, &length[i]);
+                buf_len[j] = (uint32)strlen(aux);
+                bufs[j] = aux;
+                *(uint32*)&data[i] = buf_len[j];
+                total_buf_len += ++buf_len[j];
+                j++;
                 break;
         }
     }
 
-    Execute(bind);
+    char *buf = (char*)malloc(total_buf_len);
+
+    j = 0;
+    for(i = 0; i < nr_blobs + nr_strings; i++)
+    {
+        memcpy(&buf[j], bufs[i], buf_len[i]);
+        bufs[i] = &buf[j];
+        j += buf_len[i];
+    }
+
+    //Execute(bind);
+}
+
+void MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
+{
+    char *aux;
+    int i, j = 0;
+    switch(format[0])
+    {
+        case MYSQL_TYPE_BLOB:
+            *(uint32*)&m_data[0] = *(uint32*)arg1;
+            m_bind[m_str_idx[j++]].buffer = va_arg(ap, char*);
+            break;
+        case MYSQL_TYPE_TINY:
+            *(char*)&m_data[0] = *(char*)arg1;
+            break;
+        case MYSQL_TYPE_LONG:
+            *(unsigned long*)&m_data[0] = *(unsigned long*)arg1;
+            break;
+        case MYSQL_TYPE_FLOAT:
+            *(float*)&m_data[0] = *(float*)arg1;
+            break;
+        case MYSQL_TYPE_STRING:
+            *(uint32*)&m_data[0] = (uint32)strlen((char*)arg1);
+            m_bind[m_str_idx[j++]].buffer = *(char**)arg1;
+            break;
+    }
+
+    for(i = 1; i < format_len; i++)
+    {
+        switch(format[i])
+        {
+            case MYSQL_TYPE_BLOB:
+                *(uint32*)&m_data[i] = va_arg(ap, uint32);
+                m_bind[m_str_idx[j++]].buffer = va_arg(ap, char*);
+                break;
+            case MYSQL_TYPE_TINY:
+                *(char*)&m_data[i] = va_arg(ap, char);
+                break;
+            case MYSQL_TYPE_LONG:
+                *(unsigned long*)&m_data[i] = va_arg(ap, unsigned long);
+                break;
+            case MYSQL_TYPE_FLOAT:
+                *(float*)&m_data[i] = va_arg(ap, float);
+                break;
+            case MYSQL_TYPE_STRING:
+                aux = va_arg(ap, char*);
+                *(uint32*)&m_data[i] = (uint32)strlen(aux);
+                m_bind[m_str_idx[j++]].buffer = aux;
+                break;
+        }
+    }
+
+    DirectExecute(m_bind);
 }
 
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)
