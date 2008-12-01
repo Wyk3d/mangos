@@ -37,4 +37,45 @@ class PGSQLPreparedStatement : public PreparedStatementBase< PGSQLPreparedStatem
         DatabasePostgre *m_db;
 };
 
+template< uint32 N >
+class PGSQLPreparedStatementBinder : public PreparedStatementBinderBase< PGSQLPreparedStatementBinder<N> >
+{
+    public:
+        PGSQLPreparedStatementBinder(PGSQLPreparedStatement *stmt)
+            : m_stmt(stmt)
+        {
+        }
+
+        void append(unsigned long x)
+        {
+        }
+
+        void append(float x)
+        {
+        }
+
+        void append(char x)
+        {
+        }
+
+        void append(uint64 x)
+        {
+        }
+
+        void append(char *str)
+        {
+        }
+
+        void append(unsigned long len, char *buf)
+        {
+        }
+
+        void Execute()
+        {
+        }
+
+    private:
+        PGSQLPreparedStatement * m_stmt;
+};
+
 #endif

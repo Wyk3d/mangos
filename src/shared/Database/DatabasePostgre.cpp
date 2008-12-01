@@ -344,7 +344,7 @@ void DatabasePostgre::HaltDelayThread()
     m_threadBody = NULL;
 }
 
-PreparedStatement * DatabasePostgre::PrepareStatement(const char *sql)
+PreparedStmt * DatabasePostgre::Prepare(const char *statement)
 {
     return new PGSQLPreparedStatement(this, sql);
 }

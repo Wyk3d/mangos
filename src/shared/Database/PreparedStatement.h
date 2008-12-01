@@ -41,6 +41,26 @@ class PreparedStatementBase
         QueryResult * _PQuery(void *arg1, va_list ap);
 };
 
+template< class D >
+class PreparedStatementBinderBase
+{
+    public:
+        template< class T >
+        D & operator << (T x)
+        {
+            (static_cast<D*>(this))->append(x);
+            return *(static_cast<D*>(this));
+        }
+
+        void append(unsigned long x);
+        void append(float x);
+        void append(char x);
+        void append(uint64 x);
+        void append(char *str);
+        void append(unsigned long len, char *buf);
+        void Execute();
+};
+
 #ifndef DO_POSTGRESQL
 #   define PreparedStmt MySQLPreparedStatement
 #   define PSBinder MySQLPreparedStatementBinder

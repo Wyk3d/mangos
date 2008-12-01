@@ -55,7 +55,7 @@ class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatem
 };
 
 template< uint32 N >
-class MySQLPreparedStatementBinder
+class MySQLPreparedStatementBinder : public PreparedStatementBinderBase< MySQLPreparedStatementBinder<N> >
 {
     public:
         MySQLPreparedStatementBinder(MySQLPreparedStatement *stmt)
@@ -63,13 +63,6 @@ class MySQLPreparedStatementBinder
         {
             memset(m_bind, 0, sizeof(m_bind));
             // the other arrays are always overwritten
-        }
-
-        template< class T >
-        MySQLPreparedStatementBinder & operator << (T x)
-        {
-            append(x);
-            return *this;
         }
 
         void append(unsigned long x)
