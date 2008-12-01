@@ -407,7 +407,7 @@ void DatabaseMysql::HaltDelayThread()
     m_threadBody = NULL;
 }
 
-PreparedStatement * DatabaseMysql::PrepareStatement(const char *sql)
+PreparedStmt * DatabaseMysql::Prepare(const char *statement)
 {
     return new MySQLPreparedStatement(this, sql);
 }

@@ -17,8 +17,8 @@
  */
 
 #include "Database/DatabaseEnv.h"
-#include "Database/PGSQLPreparedStatement.h"
 
+#ifdef DO_POSTGRESQL
 
 PGSQLPreparedStatement::PGSQLPreparedStatement(DatabasePostgre *db, const char *sql)
 {
@@ -44,3 +44,5 @@ QueryResult * PGSQLPreparedStatement::_PQuery(void *arg1, va_list ap)
 {
     return NULL;
 }
+
+#endif

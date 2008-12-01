@@ -23,24 +23,32 @@
 
 class QueryResult;
 
-class PreparedStatement
+template< class D >
+class PreparedStatementBase
 {
     public:
-        PreparedStatement() {}
-        virtual ~PreparedStatement() {}
-        
-        virtual void Execute() = 0;
-        virtual QueryResult * Query() = 0;
+        void Execute();
+        QueryResult * Query();
 
         // used as: void PExecute(...);
         template<class T> void PExecute(T arg1, ...)
-            { va_list ap; va_start(ap, arg1); _PExecute((void*)&arg1, ap); va_end(ap); }
+            { va_list ap; va_start(ap, arg1); (static_cast<D*>(this))->_PExecute((void*)&arg1, ap); va_end(ap); }
         // used as: QueryResult * PQuery(...);
         template<class T> QueryResult * PQuery(T arg1, ...)
-            { va_list ap; va_start(ap, arg1); QueryResult * ret = _PQuery((void*)&arg1, ap); va_end(ap); return ret; }
+            { va_list ap; va_start(ap, arg1); QueryResult * ret = (static_cast<D*>(this))->_PQuery((void*)&arg1, ap); va_end(ap); return ret; }
     private:
-        virtual void _PExecute(void *arg1, va_list ap);
-        virtual QueryResult * _PQuery(void *arg1, va_list ap);
+        void _PExecute(void *arg1, va_list ap);
+        QueryResult * _PQuery(void *arg1, va_list ap);
 };
+
+#ifndef DO_POSTGRESQL
+#   define PreparedStmt MySQLPreparedStatement
+#   define PSBinder MySQLPreparedStatementBinder
+#   include "Database/MySQLPreparedStatement.h"
+#else
+#   define PreparedStmt PGSQLPreparedStatement
+#   define PSBinder PGSQLPreparedStatementBinder
+#   include "Database/PGSQLPreparedStatement.h"
+#endif
 
 #endif

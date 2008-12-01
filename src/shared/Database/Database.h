@@ -86,7 +86,7 @@ class MANGOS_DLL_SPEC Database
         virtual bool DirectExecute(const char* sql) = 0;
         bool DirectPExecute(const char *format,...) ATTR_PRINTF(2,3);
 
-        virtual PreparedStatement * PrepareStatement(const char *format) = 0;
+        virtual PreparedStmt * Prepare(const char *statement) = 0;
 
         // Writes SQL commands to a LOG file (see mangosd.conf "LogSQL")
         bool PExecuteLog(const char *format,...) ATTR_PRINTF(2,3);

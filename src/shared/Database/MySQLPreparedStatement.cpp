@@ -16,8 +16,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "Database/MySQLPreparedStatement.h"
 #include "Database/DatabaseEnv.h"
+
+#ifndef DO_POSTGRESQL
 
 #define MAX_NR_ARGUMENTS 2048
 
@@ -199,3 +200,4 @@ QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)
     return NULL;
 }
 
+#endif

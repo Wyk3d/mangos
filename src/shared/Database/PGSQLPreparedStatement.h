@@ -23,7 +23,7 @@
 
 class DatabasePostgre;
 
-class PGSQLPreparedStatement : public PreparedStatement
+class PGSQLPreparedStatement : public PreparedStatementBase< PGSQLPreparedStatement >
 {
     public:
         PGSQLPreparedStatement(DatabasePostgre *db, const char *sql);

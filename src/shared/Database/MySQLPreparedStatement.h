@@ -32,7 +32,7 @@
 
 class DatabaseMysql;
 
-class MySQLPreparedStatement : public PreparedStatement
+class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatement >
 {
     template< uint32 N > friend class MySQLPreparedStatementBinder;
     public:
