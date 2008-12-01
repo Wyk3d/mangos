@@ -43,8 +43,10 @@ class MySQLPreparedStatement : public PreparedStatement
         void _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
 
+        void _set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len);
+
         MYSQL_STMT * m_stmt;
-        char *format;
+        enum_field_types *format;
         size_t format_len;
 };
 

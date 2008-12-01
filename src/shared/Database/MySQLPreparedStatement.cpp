@@ -31,7 +31,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     size_t sql_len = strlen(sql);
     char *stmt_str = new char[sql_len+1], *p, *q;
 
-    format = (char*)malloc(sql_len);
+    format = (enum_field_types*)malloc(sql_len*sizeof(enum_field_types));
     format_len = 0;
     
     for(p = (char*)sql, q = stmt_str; *p != '\0'; p++, q++)
@@ -48,21 +48,21 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
                 switch(*p)
                 {
                     case 'b':
-                        format[format_len++] = (char)MYSQL_TYPE_BLOB;
+                        format[format_len++] = MYSQL_TYPE_BLOB;
                         break;
                     case 'c':
-                        format[format_len++] = (char)MYSQL_TYPE_TINY;
+                        format[format_len++] = MYSQL_TYPE_TINY;
                         break;
                     case 'd':
                     case 'i':
                     case 'u':
-                        format[format_len++] = (char)MYSQL_TYPE_LONG;
+                        format[format_len++] = MYSQL_TYPE_LONG;
                         break;
                     case 'f':
-                        format[format_len++] = (char)MYSQL_TYPE_FLOAT;
+                        format[format_len++] = MYSQL_TYPE_FLOAT;
                         break;
                     case 's':
-                        format[format_len++] = (char)MYSQL_TYPE_STRING;
+                        format[format_len++] = MYSQL_TYPE_STRING;
                         break;
                     default:
                         sLog.outError("MySQLPreparedStatement: unsupported format specified %c", *p);
@@ -91,7 +91,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
         format = NULL;
     }
     else
-        format = (char*)realloc(format, format_len);
+        format = (enum_field_types*)realloc(format, format_len*sizeof(enum_field_types));
 }
 
 MySQLPreparedStatement::~MySQLPreparedStatement()
@@ -103,7 +103,7 @@ MySQLPreparedStatement::~MySQLPreparedStatement()
 
 void MySQLPreparedStatement::Execute()
 {
-    
+
 }
 
 QueryResult * MySQLPreparedStatement::Query()
@@ -111,12 +111,82 @@ QueryResult * MySQLPreparedStatement::Query()
     return NULL;
 }
 
+void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len)
+{
+    bind.buffer_type = type;
+    bind.buffer = value;
+    bind.buffer_length = buf_len;
+    bind.length = len;
+}
+
 void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
+    MYSQL_BIND bind[2048];
+    unsigned long length[2048];
+    char *aux;
 
+    memset(bind, 0, format_len * sizeof(MYSQL_BIND));
+
+    switch(format[0])
+    {
+        case MYSQL_TYPE_BLOB:
+            _set_bind(bind[0], format[0], va_arg(ap, char *), *(unsigned long*)arg1, (unsigned long*)arg1);                         
+            break;
+        case MYSQL_TYPE_TINY:
+        case MYSQL_TYPE_LONG:
+        case MYSQL_TYPE_FLOAT:
+            _set_bind(bind[0], format[0], (char *)arg1, 0, NULL);
+            break;
+        case MYSQL_TYPE_STRING:
+            length[0] = strlen((char*)arg1);
+            _set_bind(bind[0], format[0], (char *)arg1, length[0]+1, &length[0]);
+            break;
+    }
+
+    for(int i = 1; i < format_len; i++)
+    {
+        switch(format[i])
+        {
+            case MYSQL_TYPE_BLOB:
+                length[i] = va_arg(ap, unsigned long);
+                _set_bind(bind[i], format[i], va_arg(ap, char *), length[i], &length[i]);
+                break;
+            case MYSQL_TYPE_TINY:
+                // note: the standard doesn't say va_arg has to be an lvalue
+                // but since it is on most platforms, it's better to keep it in this form
+                // for performance reasons (one less copy)
+                _set_bind(bind[i], format[i], (char*)&va_arg(ap, char), 0, NULL);
+                break;
+            case MYSQL_TYPE_LONG:
+                _set_bind(bind[i], format[i], (char*)&va_arg(ap, unsigned long), 0, NULL);
+                break;
+            case MYSQL_TYPE_FLOAT:
+                _set_bind(bind[i], format[i], (char*)&va_arg(ap, float), 0, NULL);
+                break;
+            case MYSQL_TYPE_STRING:
+                aux = va_arg(ap, char*);
+                length[i] = strlen(aux);
+                _set_bind(bind[i], format[i], aux, length[i]+1, &length[i]);
+                break;
+        }
+    }
+
+    if(mysql_stmt_bind_param(m_stmt, bind))
+    {
+        sLog.outError("mysql_stmt_bind_param() failed, %s", mysql_stmt_error(m_stmt));
+        assert(false);
+    }
+
+    if(mysql_stmt_execute(m_stmt))
+    {
+        // can this occur on query syntax error ?
+        sLog.outError("mysql_stmt_execute() failed, %s", mysql_stmt_error(m_stmt));
+        assert(false);
+    }
 }
 
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)
 {
     return NULL;
 }
+
