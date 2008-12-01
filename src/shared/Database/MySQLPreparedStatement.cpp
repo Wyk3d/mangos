@@ -17,6 +17,7 @@
  */
 
 #include "Database/DatabaseEnv.h"
+#include "Database/SqlOperations.h"
 
 #ifndef DO_POSTGRESQL
 
@@ -24,7 +25,8 @@
 
 MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sql, va_list ap)
 {
-    m_stmt = mysql_stmt_init(db->mMysql);
+    m_db = db;
+    m_stmt = mysql_stmt_init(m_db->mMysql);
     if(!m_stmt)
     {
         sLog.outError("mysql_stmt_init(), out of memory");
@@ -36,7 +38,6 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
 
     format = (enum_field_types*)malloc(sql_len*sizeof(enum_field_types));
     format_len = 0;
-    nr_blobs = 0;
     nr_strings = 0;
     
     for(p = (char*)sql, q = stmt_str; *p != '\0'; p++, q++)
@@ -53,7 +54,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
                 switch(*p)
                 {
                     case 'b':
-                        nr_blobs++;
+                        nr_strings++;
                         format[format_len++] = MYSQL_TYPE_BLOB;
                         break;
                     case 'c':
@@ -103,7 +104,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     delete[] stmt_str;
 
     m_bind = new MYSQL_BIND[format_len];
-    m_data = new uint64[format_len + nr_blobs + nr_strings];
+    m_data = new uint64[format_len + nr_strings];
     m_str_idx = new int[format_len];
 
     int poz = 0;
@@ -116,8 +117,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
             case MYSQL_TYPE_BLOB:
             case MYSQL_TYPE_STRING:
                 _set_bind(m_bind[i], format[i], NULL, va_arg(ap, uint32), (unsigned long*)&m_data[poz]);
-                m_str_idx[str_poz] = i;
-                str_poz++;
+                m_str_idx[str_poz++] = i;
                 break;
             case MYSQL_TYPE_TINY:
             case MYSQL_TYPE_LONG:
@@ -151,6 +151,11 @@ void MySQLPreparedStatement::DirectExecute()
     }
 }
 
+void MySQLPreparedStatement::Execute()
+{
+    m_db->m_threadBody->Delay(new SqlPreparedStatement(this, NULL));
+}
+
 void MySQLPreparedStatement::DirectExecute(MYSQL_BIND *binds)
 {
     if(mysql_stmt_bind_param(m_stmt, binds))
@@ -177,8 +182,9 @@ void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, 
 
 void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
-    uint64 *data = new uint64[format_len];
-    char **bufs = new char*[nr_blobs+nr_strings];
+    char * raw_data = new char[format_len*sizeof(uint64)+nr_strings*sizeof(char*)];
+    uint64 *data = (uint64*)raw_data;
+    char **bufs = (char**)&data[format_len];
 
     uint32 buf_len[MAX_NR_ARGUMENTS];
     char *aux;
@@ -243,14 +249,18 @@ void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
         }
     }
 
-    char *buf = (char*)malloc(total_buf_len);
-
-    j = 0;
-    for(i = 0; i < nr_blobs + nr_strings; i++)
+    char *buf;
+    if(nr_strings > 0)
     {
-        memcpy(&buf[j], bufs[i], buf_len[i]);
-        bufs[i] = &buf[j];
-        j += buf_len[i];
+        buf = (char*)malloc(total_buf_len);
+
+        j = 0;
+        for(i = 0; i < nr_strings; i++)
+        {
+            memcpy(&buf[j], bufs[i], buf_len[i]);
+            bufs[i] = &buf[j];
+            j += buf_len[i];
+        }
     }
 
     //Execute(bind);

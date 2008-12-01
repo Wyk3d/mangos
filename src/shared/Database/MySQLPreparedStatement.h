@@ -51,14 +51,18 @@ class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatem
 
         static void _set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len);
 
+        DatabaseMysql *m_db;
+
         MYSQL_STMT * m_stmt;
+        MYSQL_BIND * m_bind;
+
         enum_field_types * format;
         int format_len;
-        int nr_blobs;
-        int nr_strings;
-        MYSQL_BIND * m_bind;
+        
         uint64 * m_data;
+
         int * m_str_idx;
+        int nr_strings;
 };
 
 template< uint32 N >

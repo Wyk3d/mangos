@@ -57,9 +57,9 @@ class SqlPreparedStatement : public SqlOperation
 {
     private:
         PreparedStmt *m_stmt;
-        uint64 *m_data;
+        char *m_data;
     public:
-        SqlPreparedStatement(PreparedStmt *stmt, uint64 *data) : m_stmt(stmt), m_data(data) {}
+        SqlPreparedStatement(PreparedStmt *stmt, char *data) : m_stmt(stmt), m_data(data) {}
         ~SqlPreparedStatement() {}
         void Execute(Database *db);
 };

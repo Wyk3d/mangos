@@ -67,8 +67,6 @@ class MANGOS_DLL_SPEC DatabaseMysql : public Database
     private:
         ZThread::FastMutex mMutex;
 
-        ZThread::ThreadImpl* tranThread;
-
         MYSQL *mMysql;
 
         static size_t db_count;
