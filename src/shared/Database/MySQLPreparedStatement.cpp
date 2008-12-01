@@ -19,6 +19,8 @@
 #include "Database/MySQLPreparedStatement.h"
 #include "Database/DatabaseEnv.h"
 
+#define MAX_NR_ARGUMENTS 2048
+
 MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sql)
 {
     m_stmt = mysql_stmt_init(db->mMysql);
@@ -78,6 +80,8 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     }
     *q = '\0';
 
+    assert(format_len <= MAX_NR_ARGUMENTS);
+
     if(mysql_stmt_prepare(m_stmt, stmt_str, q - stmt_str))
     {
         sLog.outError("mysql_stmt_prepare(), %s", mysql_stmt_error(m_stmt));
@@ -103,7 +107,23 @@ MySQLPreparedStatement::~MySQLPreparedStatement()
 
 void MySQLPreparedStatement::Execute()
 {
+    if(mysql_stmt_execute(m_stmt))
+    {
+        // can this occur on query syntax error ?
+        sLog.outError("mysql_stmt_execute() failed, %s", mysql_stmt_error(m_stmt));
+        assert(false);
+    }
+}
 
+void MySQLPreparedStatement::Execute(MYSQL_BIND *binds)
+{
+    if(mysql_stmt_bind_param(m_stmt, binds))
+    {
+        sLog.outError("mysql_stmt_bind_param() failed, %s", mysql_stmt_error(m_stmt));
+        assert(false);
+    }
+
+    Execute();
 }
 
 QueryResult * MySQLPreparedStatement::Query()
@@ -121,8 +141,8 @@ void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, 
 
 void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
-    MYSQL_BIND bind[2048];
-    unsigned long length[2048];
+    MYSQL_BIND bind[MAX_NR_ARGUMENTS];
+    unsigned long length[MAX_NR_ARGUMENTS];
     char *aux;
 
     memset(bind, 0, format_len * sizeof(MYSQL_BIND));
@@ -171,18 +191,7 @@ void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
         }
     }
 
-    if(mysql_stmt_bind_param(m_stmt, bind))
-    {
-        sLog.outError("mysql_stmt_bind_param() failed, %s", mysql_stmt_error(m_stmt));
-        assert(false);
-    }
-
-    if(mysql_stmt_execute(m_stmt))
-    {
-        // can this occur on query syntax error ?
-        sLog.outError("mysql_stmt_execute() failed, %s", mysql_stmt_error(m_stmt));
-        assert(false);
-    }
+    Execute(bind);
 }
 
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)

@@ -19,8 +19,6 @@
 #ifndef _MYSQL_PREPARED_STATEMENT_H_
 #define _MYSQL_PREPARED_STATEMENT_H_
 
-#include "Database/PreparedStatement.h"
-
 #ifdef WIN32
 #define FD_SETSIZE 1024
 #include <winsock2.h>
@@ -29,25 +27,107 @@
 #include <mysql.h>
 #endif
 
+#include "Platform/Define.h"
+#include "Database/PreparedStatement.h"
+
 class DatabaseMysql;
 
 class MySQLPreparedStatement : public PreparedStatement
 {
+    template< uint32 N > friend class MySQLPreparedStatementBinder;
     public:
         MySQLPreparedStatement(DatabaseMysql *db, const char *sql);
         ~MySQLPreparedStatement();
         
         void Execute();
         QueryResult * Query();
+
+        void Execute(MYSQL_BIND *binds);
     private:
         void _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
 
-        void _set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len);
+        static void _set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len);
 
         MYSQL_STMT * m_stmt;
         enum_field_types *format;
         size_t format_len;
+};
+
+template< uint32 N >
+class MySQLPreparedStatementBinder
+{
+    public:
+        MySQLPreparedStatementBinder(MySQLPreparedStatement *stmt)
+            : m_stmt(stmt), m_poz(0)
+        {
+            memset(m_bind, 0, sizeof(m_bind));
+            // the other arrays are always overwritten
+        }
+
+        template< class T >
+        MySQLPreparedStatementBinder & operator << (T x)
+        {
+            append(x);
+            return *this;
+        }
+
+        void append(unsigned long x)
+        {
+            *(unsigned long*)&m_data[m_poz] = x;
+            MySQLPreparedStatement::_set_bind(m_bind[m_poz], MYSQL_TYPE_INTEGER, (char*)&m_data[m_poz], 0, NULL);
+            m_poz++;
+        }
+
+        void append(float x)
+        {
+            *(float*)&m_data[m_poz] = x;
+            MySQLPreparedStatement::_set_bind(m_bind[m_poz], MYSQL_TYPE_FLOAT, (char*)&m_data[m_poz], 0, NULL);
+            m_poz++;
+        }
+
+        void append(char x)
+        {
+            *(char*)&m_data[m_poz] = x;
+            MySQLPreparedStatement::_set_bind(m_bind[m_poz], MYSQL_TYPE_TINYINT, (char*)&m_data[m_poz], 0, NULL);
+            m_poz++;
+        }
+
+        void append(uint64 x)
+        {
+            *(uint64*)&m_data[m_poz] = x;
+            MySQLPreparedStatement::_set_bind(m_bind[m_poz], MYSQL_TYPE_BIGINT, (char*)&m_data[m_poz], 0, NULL);
+            m_poz++;
+        }
+
+        void append(char *str)
+        {
+            m_length[m_poz] = strlen(str);
+            *(char *)&m_data[m_poz] = str;
+            MySQLPreparedStatement::_set_bind(m_bind[m_poz], MYSQL_TYPE_STRING, str, m_length[m_poz] + 1, &m_length[m_poz]);
+            m_poz++;
+        }
+
+        void append(unsigned long len, char *buf)
+        {
+            m_length[m_poz] = len;
+            *(char *)&m_data[m_poz] = buf;
+            MySQLPreparedStatement::_set_bind(m_bind[m_poz], MYSQL_TYPE_BLOB, buf, m_length[m_poz], &m_length[m_poz]);
+            m_poz++;
+        }
+
+        void Execute()
+        {
+            m_stmt->Execute(m_bind);
+        }
+
+    private:
+
+        MySQLPreparedStatement * m_stmt;
+        MYSQL_BIND m_bind[N];
+        unsigned long m_length[N];
+        uint64 m_data[N];
+        uint32 m_poz;
 };
 
 #endif
