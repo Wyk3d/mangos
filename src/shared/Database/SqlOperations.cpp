@@ -31,7 +31,8 @@ void SqlStatement::Execute(Database *db)
 
 void SqlPreparedStatement::Execute(Database *db)
 {
-
+    /// just do it
+    m_stmt->DirectExecute(m_data);
 }
 
 void SqlTransaction::Execute(Database *db)

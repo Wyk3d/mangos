@@ -30,6 +30,9 @@ class PGSQLPreparedStatement : public PreparedStatementBase< PGSQLPreparedStatem
         
         void Execute();
         QueryResult * Query();
+
+        void Execute(char *raw_data);
+        void DirectExecute(char *raw_data);
     private:
         void _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);

@@ -153,17 +153,23 @@ void MySQLPreparedStatement::DirectExecute()
 
 void MySQLPreparedStatement::Execute()
 {
-    m_db->m_threadBody->Delay(new SqlPreparedStatement(this, NULL));
+    Execute(NULL);
 }
 
-void MySQLPreparedStatement::DirectExecute(MYSQL_BIND *binds)
+void MySQLPreparedStatement::Execute(char *raw_data)
 {
-    if(mysql_stmt_bind_param(m_stmt, binds))
-    {
-        sLog.outError("mysql_stmt_bind_param() failed, %s", mysql_stmt_error(m_stmt));
-        assert(false);
-    }
+    // TODO: transactions!
+    m_db->m_threadBody->Delay(new SqlPreparedStatement(this, raw_data));
+}
 
+void MySQLPreparedStatement::DirectExecute(char *raw_data)
+{
+    memcpy(m_data, raw_data, format_len * sizeof(uint64));
+    char **bufs = (char**)&m_data[format_len];
+
+    for(int i = 0; i < nr_strings; i++)
+        m_bind[m_str_idx[i]].buffer = bufs[i];
+    
     DirectExecute();
 }
 
@@ -263,7 +269,7 @@ void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
         }
     }
 
-    //Execute(bind);
+    Execute(raw_data);
 }
 
 void MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
@@ -316,7 +322,7 @@ void MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
         }
     }
 
-    DirectExecute(m_bind);
+    DirectExecute();
 }
 
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)

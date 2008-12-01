@@ -43,7 +43,8 @@ class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatem
         void Execute();
         QueryResult * Query();
 
-        void DirectExecute(MYSQL_BIND *binds);
+        void Execute(char *raw_data);
+        void DirectExecute(char *raw_data);
     private:
         void _DirectPExecute(void *arg1, va_list ap);
         void _PExecute(void *arg1, va_list ap);

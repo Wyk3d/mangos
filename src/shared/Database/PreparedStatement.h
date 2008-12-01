@@ -40,6 +40,9 @@ class PreparedStatementBase
         // used as: QueryResult * PQuery(...);
         template<class T> QueryResult * PQuery(T arg1, ...)
             { va_list ap; va_start(ap, arg1); QueryResult * ret = (static_cast<D*>(this))->_PQuery((void*)&arg1, ap); va_end(ap); return ret; }
+
+        void Execute(char *raw_data);
+        void DirectExecute(char *raw_data);
     private:
         void _DirectPExecute(void *arg1, va_list ap);
         void _PExecute(void *arg1, va_list ap);
