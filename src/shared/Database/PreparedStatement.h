@@ -66,16 +66,31 @@ class PreparedStatementBinderBase
         void append(uint64 x);
         void append(char *str);
         void append(unsigned long len, char *buf);
+};
+
+template< class D >
+class PreparedStatementAsyncBinderBase : public PreparedStatementBinderBase<D>
+{
+    public:
         bool Execute();
+};
+
+template< class D >
+class PreparedStatementDirectBinderBase : public PreparedStatementBinderBase<D>
+{
+    public:
+        bool DirectExecute();
 };
 
 #ifndef DO_POSTGRESQL
 #   define PreparedStmt MySQLPreparedStatement
 #   define PSBinder MySQLPreparedStatementBinder
+#   define PSDirectBinder MySQLPreparedStatementDirectBinder
 #   include "Database/MySQLPreparedStatement.h"
 #else
 #   define PreparedStmt PGSQLPreparedStatement
 #   define PSBinder PGSQLPreparedStatementBinder
+#   define PSDirectBinder PGSQLPreparedStatementDirectBinder
 #   include "Database/PGSQLPreparedStatement.h"
 #endif
 

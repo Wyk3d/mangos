@@ -220,10 +220,9 @@ void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, 
     bind.length = len;
 }
 
-bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
+template< class B >
+void MySQLPreparedStatement::_parse_args(B &binder, void *arg1, va_list ap)
 {
-    MySQLPreparedStatementBinder binder(this);
-
     int i = 0;
     switch(format[0])
     {
@@ -266,66 +265,20 @@ bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
                 break;
         }
     }
+}
 
+bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
+{
+    MySQLPreparedStatementBinder binder(this);
+    _parse_args(binder, arg1, ap);
     return binder.Execute();
 }
 
 bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
 {
-    char *aux;
-    int i, j = 0;
-    uint32 buf_len;
-    switch(format[0])
-    {
-        case MYSQL_TYPE_BLOB:
-            buf_len = *(uint32*)arg1;
-            *(uint32*)&m_data[0] = buf_len;
-            memcpy(m_bufs[0], va_arg(ap, char*), buf_len);
-            break;
-        case MYSQL_TYPE_TINY:
-            *(char*)&m_data[0] = *(char*)arg1;
-            break;
-        case MYSQL_TYPE_LONG:
-            *(unsigned long*)&m_data[0] = *(unsigned long*)arg1;
-            break;
-        case MYSQL_TYPE_FLOAT:
-            *(float*)&m_data[0] = *(float*)arg1;
-            break;
-        case MYSQL_TYPE_STRING:
-            buf_len = (uint32)strlen((char*)arg1);
-            *(uint32*)&m_data[0] = buf_len;
-            memcpy(m_bufs[0], *(char**)arg1, buf_len);
-            break;
-    }
-
-    for(i = 1; i < format_len; i++)
-    {
-        switch(format[i])
-        {
-            case MYSQL_TYPE_BLOB:
-                buf_len = va_arg(ap, uint32);
-                *(uint32*)&m_data[i] = buf_len;
-                memcpy(m_bufs[i], va_arg(ap, char*), buf_len);
-                break;
-            case MYSQL_TYPE_TINY:
-                *(char*)&m_data[i] = va_arg(ap, char);
-                break;
-            case MYSQL_TYPE_LONG:
-                *(unsigned long*)&m_data[i] = va_arg(ap, unsigned long);
-                break;
-            case MYSQL_TYPE_FLOAT:
-                *(float*)&m_data[i] = va_arg(ap, float);
-                break;
-            case MYSQL_TYPE_STRING:
-                aux = va_arg(ap, char*);
-                buf_len = (uint32)strlen(aux);
-                *(uint32*)&m_data[i] = buf_len;
-                memcpy(m_bufs[i], aux, buf_len);
-                break;
-        }
-    }
-
-    return DirectExecute();
+    MySQLPreparedStatementDirectBinder binder(this);
+    _parse_args(binder, arg1, ap);
+    return binder.DirectExecute();
 }
 
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)
@@ -369,6 +322,16 @@ bool MySQLPreparedStatementBinder::Execute()
     }
 
     return m_stmt->Execute((char*)m_data);
+}
+
+MySQLPreparedStatementDirectBinder::MySQLPreparedStatementDirectBinder(MySQLPreparedStatement *stmt)
+    : m_stmt(stmt), m_poz(0), m_str_poz(0)
+{
+}
+
+bool MySQLPreparedStatementDirectBinder::DirectExecute()
+{
+    return m_stmt->DirectExecute();
 }
 
 #endif
