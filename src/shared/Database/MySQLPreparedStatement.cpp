@@ -106,9 +106,11 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     m_bind = new MYSQL_BIND[format_len];
     m_data = new uint64[format_len + nr_strings];
     m_str_idx = new int[format_len];
+    m_bufs = new char*[nr_strings];
 
     int poz = 0;
     int str_poz = 0;
+    uint32 buf_len;
 
     for(int i = 0; i < format_len; i++, poz++)
     {
@@ -116,7 +118,9 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
         {
             case MYSQL_TYPE_BLOB:
             case MYSQL_TYPE_STRING:
-                _set_bind(m_bind[i], format[i], NULL, va_arg(ap, uint32), (unsigned long*)&m_data[poz]);
+                buf_len = va_arg(ap, uint32);
+                m_bufs[i] = new char[buf_len];
+                _set_bind(m_bind[i], format[i], m_bufs[i], buf_len, (unsigned long*)&m_data[poz]);
                 m_str_idx[str_poz++] = i;
                 break;
             case MYSQL_TYPE_TINY:
@@ -161,6 +165,7 @@ bool MySQLPreparedStatement::Execute()
 
 bool MySQLPreparedStatement::Execute(char *raw_data)
 {
+    // TODO: move this into database and reuse this code
     if (!m_db->mMysql)
         return false;
 
@@ -187,7 +192,7 @@ bool MySQLPreparedStatement::DirectExecute(char *raw_data)
     char **bufs = (char**)&m_data[format_len];
 
     for(int i = 0; i < nr_strings; i++)
-        m_bind[m_str_idx[i]].buffer = bufs[i];
+        memcpy(m_bufs[i], bufs[i], *(uint32*)&m_data[m_str_idx[i]]);
     
     return DirectExecute();
 }
@@ -195,9 +200,11 @@ bool MySQLPreparedStatement::DirectExecute(char *raw_data)
 void MySQLPreparedStatement::Free(char *raw_data)
 {
     char **bufs = (char**)&raw_data[format_len];
-    for(int i = 0; i < nr_strings; i++)
-        free(bufs[i]);
-    free(raw_data);
+    // all strings are stored in one buffer
+    // the first string points to the start of the buffer
+    if(nr_strings > 0)
+        delete[] bufs[0];
+    delete[] raw_data;
 }
 
 QueryResult * MySQLPreparedStatement::Query()
@@ -285,7 +292,7 @@ bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
     char *buf;
     if(nr_strings > 0)
     {
-        buf = (char*)malloc(total_buf_len);
+        buf = new char[total_buf_len];
 
         j = 0;
         for(i = 0; i < nr_strings; i++)
@@ -303,11 +310,13 @@ bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
 {
     char *aux;
     int i, j = 0;
+    uint32 buf_len;
     switch(format[0])
     {
         case MYSQL_TYPE_BLOB:
-            *(uint32*)&m_data[0] = *(uint32*)arg1;
-            m_bind[m_str_idx[j++]].buffer = va_arg(ap, char*);
+            buf_len = *(uint32*)arg1;
+            *(uint32*)&m_data[0] = buf_len;
+            memcpy(m_bufs[0], va_arg(ap, char*), buf_len);
             break;
         case MYSQL_TYPE_TINY:
             *(char*)&m_data[0] = *(char*)arg1;
@@ -319,8 +328,9 @@ bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
             *(float*)&m_data[0] = *(float*)arg1;
             break;
         case MYSQL_TYPE_STRING:
-            *(uint32*)&m_data[0] = (uint32)strlen((char*)arg1);
-            m_bind[m_str_idx[j++]].buffer = *(char**)arg1;
+            buf_len = (uint32)strlen((char*)arg1);
+            *(uint32*)&m_data[0] = buf_len;
+            memcpy(m_bufs[0], *(char**)arg1, buf_len);
             break;
     }
 
@@ -329,8 +339,9 @@ bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
         switch(format[i])
         {
             case MYSQL_TYPE_BLOB:
-                *(uint32*)&m_data[i] = va_arg(ap, uint32);
-                m_bind[m_str_idx[j++]].buffer = va_arg(ap, char*);
+                buf_len = va_arg(ap, uint32);
+                *(uint32*)&m_data[i] = buf_len;
+                memcpy(m_bufs[i], va_arg(ap, char*), buf_len);
                 break;
             case MYSQL_TYPE_TINY:
                 *(char*)&m_data[i] = va_arg(ap, char);
@@ -343,8 +354,9 @@ bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
                 break;
             case MYSQL_TYPE_STRING:
                 aux = va_arg(ap, char*);
-                *(uint32*)&m_data[i] = (uint32)strlen(aux);
-                m_bind[m_str_idx[j++]].buffer = aux;
+                buf_len = (uint32)strlen(aux);
+                *(uint32*)&m_data[i] = buf_len;
+                memcpy(m_bufs[i], aux, buf_len);
                 break;
         }
     }
