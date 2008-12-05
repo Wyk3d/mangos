@@ -141,28 +141,47 @@ MySQLPreparedStatement::~MySQLPreparedStatement()
         sLog.outError("failed while closing the prepared statement");
 }
 
-void MySQLPreparedStatement::DirectExecute()
+bool MySQLPreparedStatement::DirectExecute()
 {
     if(mysql_stmt_execute(m_stmt))
     {
         // can this occur on query syntax error ?
         sLog.outError("mysql_stmt_execute() failed, %s", mysql_stmt_error(m_stmt));
-        assert(false);
+        assert(false); // test
+        return false;
     }
+
+    return true;
 }
 
-void MySQLPreparedStatement::Execute()
+bool MySQLPreparedStatement::Execute()
 {
-    Execute(NULL);
+    return Execute(NULL);
 }
 
-void MySQLPreparedStatement::Execute(char *raw_data)
+bool MySQLPreparedStatement::Execute(char *raw_data)
 {
-    // TODO: transactions!
-    m_db->m_threadBody->Delay(new SqlPreparedStatement(this, raw_data));
+    if (!m_db->mMysql)
+        return false;
+
+    // don't use queued execution if it has not been initialized
+    if (!m_db->m_threadBody) return DirectExecute(raw_data);
+
+    m_db->tranThread = ZThread::ThreadImpl::current();      // owner of this transaction
+    TransactionQueues::iterator i = m_db->m_tranQueues.find(m_db->tranThread);
+    if (i != m_db->m_tranQueues.end() && i->second != NULL)
+    {                                                       // Statement for transaction
+        i->second->DelayExecute(raw_data, this);
+    }
+    else
+    {
+        m_db->m_threadBody->Delay(new SqlPreparedStatement(this, raw_data));
+    }
+    
+    return true;
 }
 
-void MySQLPreparedStatement::DirectExecute(char *raw_data)
+bool MySQLPreparedStatement::DirectExecute(char *raw_data)
 {
     memcpy(m_data, raw_data, format_len * sizeof(uint64));
     char **bufs = (char**)&m_data[format_len];
@@ -170,7 +189,15 @@ void MySQLPreparedStatement::DirectExecute(char *raw_data)
     for(int i = 0; i < nr_strings; i++)
         m_bind[m_str_idx[i]].buffer = bufs[i];
     
-    DirectExecute();
+    return DirectExecute();
+}
+
+void MySQLPreparedStatement::Free(char *raw_data)
+{
+    char **bufs = (char**)&raw_data[format_len];
+    for(int i = 0; i < nr_strings; i++)
+        free(bufs[i]);
+    free(raw_data);
 }
 
 QueryResult * MySQLPreparedStatement::Query()
@@ -186,7 +213,7 @@ void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, 
     bind.length = len;
 }
 
-void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
+bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
     char * raw_data = new char[format_len*sizeof(uint64)+nr_strings*sizeof(char*)];
     uint64 *data = (uint64*)raw_data;
@@ -269,10 +296,10 @@ void MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
         }
     }
 
-    Execute(raw_data);
+    return Execute(raw_data);
 }
 
-void MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
+bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
 {
     char *aux;
     int i, j = 0;
@@ -322,7 +349,7 @@ void MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
         }
     }
 
-    DirectExecute();
+    return DirectExecute();
 }
 
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)

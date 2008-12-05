@@ -28,13 +28,13 @@ class PGSQLPreparedStatement : public PreparedStatementBase< PGSQLPreparedStatem
     public:
         PGSQLPreparedStatement(DatabasePostgre *db, const char *sql);
         
-        void Execute();
+        bool Execute();
         QueryResult * Query();
 
-        void Execute(char *raw_data);
-        void DirectExecute(char *raw_data);
+        bool Execute(char *raw_data);
+        bool DirectExecute(char *raw_data);
     private:
-        void _PExecute(void *arg1, va_list ap);
+        bool _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
 
         DatabasePostgre *m_db;

@@ -27,25 +27,25 @@ template< class D >
 class PreparedStatementBase
 {
     public:
-        void DirectExecute();
-        void Execute();
+        bool DirectExecute();
+        bool Execute();
         QueryResult * Query();
 
         // used as: void DirectPExecute(...);
         template<class T> void DirectPExecute(T arg1, ...)
-            { va_list ap; va_start(ap, arg1); (static_cast<D*>(this))->_DirectPExecute((void*)&arg1, ap); va_end(ap); }
+            { va_list ap; va_start(ap, arg1); bool ret = (static_cast<D*>(this))->_DirectPExecute((void*)&arg1, ap); va_end(ap); return ret; }
         // used as: void PExecute(...);
-        template<class T> void PExecute(T arg1, ...)
-            { va_list ap; va_start(ap, arg1); (static_cast<D*>(this))->_PExecute((void*)&arg1, ap); va_end(ap); }
+        template<class T> bool PExecute(T arg1, ...)
+            { va_list ap; va_start(ap, arg1); bool ret = (static_cast<D*>(this))->_PExecute((void*)&arg1, ap); va_end(ap); return ret}
         // used as: QueryResult * PQuery(...);
         template<class T> QueryResult * PQuery(T arg1, ...)
             { va_list ap; va_start(ap, arg1); QueryResult * ret = (static_cast<D*>(this))->_PQuery((void*)&arg1, ap); va_end(ap); return ret; }
 
-        void Execute(char *raw_data);
-        void DirectExecute(char *raw_data);
+        bool Execute(char *raw_data);
+        bool DirectExecute(char *raw_data);
     private:
-        void _DirectPExecute(void *arg1, va_list ap);
-        void _PExecute(void *arg1, va_list ap);
+        bool _DirectPExecute(void *arg1, va_list ap);
+        bool _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
 };
 

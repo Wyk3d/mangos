@@ -67,10 +67,12 @@ class SqlPreparedStatement : public SqlOperation
 class SqlTransaction : public SqlOperation
 {
     private:
-        std::queue<const char *> m_queue;
+        // prepared statement + data or NULL + sql statement
+        typedef std::pair<PreparedStmt *, const char *> StmtPair;
+        std::queue<StmtPair> m_queue;
     public:
         SqlTransaction() {}
-        void DelayExecute(const char *sql) { m_queue.push(strdup(sql)); }
+        void DelayExecute(const char *sql, PreparedStmt *stmt = NULL) { m_queue.push(StmtPair(stmt, strdup(sql))); }
         void Execute(Database *db);
 };
 

@@ -39,15 +39,16 @@ class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatem
         MySQLPreparedStatement(DatabaseMysql *db, const char *sql, va_list ap);
         ~MySQLPreparedStatement();
         
-        void DirectExecute();
-        void Execute();
+        bool DirectExecute();
+        bool Execute();
         QueryResult * Query();
 
-        void Execute(char *raw_data);
-        void DirectExecute(char *raw_data);
+        bool Execute(char *raw_data);
+        bool DirectExecute(char *raw_data);
+        void Free(char *raw_data);
     private:
-        void _DirectPExecute(void *arg1, va_list ap);
-        void _PExecute(void *arg1, va_list ap);
+        bool _DirectPExecute(void *arg1, va_list ap);
+        bool _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
 
         static void _set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len);
