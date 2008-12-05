@@ -66,7 +66,7 @@ class PreparedStatementBinderBase
         void append(uint64 x);
         void append(char *str);
         void append(unsigned long len, char *buf);
-        void Execute();
+        bool Execute();
 };
 
 #ifndef DO_POSTGRESQL

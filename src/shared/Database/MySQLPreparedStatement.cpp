@@ -222,88 +222,52 @@ void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, 
 
 bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
-    char * raw_data = new char[format_len*sizeof(uint64)+nr_strings*sizeof(char*)];
-    uint64 *data = (uint64*)raw_data;
-    char **bufs = (char**)&data[format_len];
+    MySQLPreparedStatementBinder binder(this);
 
-    uint32 buf_len[MAX_NR_ARGUMENTS];
-    char *aux;
-
-    int total_buf_len = 0;
-    int i, j = 0;
+    int i = 0;
     switch(format[0])
     {
         case MYSQL_TYPE_BLOB:
-            buf_len[j] = *(uint32*)arg1;
-            bufs[j] = va_arg(ap, char*);
-            *(uint32*)&data[0] = buf_len[j];
-            total_buf_len += buf_len[j];
-            j++;
+            binder.append(*(uint32*)arg1, va_arg(ap, char*));
+            i++;
             break;
         case MYSQL_TYPE_TINY:
-            *(char*)&data[0] = *(char*)arg1;
+            binder << *(char*)arg1;
             break;
         case MYSQL_TYPE_LONG:
-            *(unsigned long*)&data[0] = *(unsigned long*)arg1;
+            binder << *(unsigned long*)arg1;
             break;
         case MYSQL_TYPE_FLOAT:
-            *(float*)&data[0] = *(float*)arg1;
+            binder << *(float*)arg1;
             break;
         case MYSQL_TYPE_STRING:
-            buf_len[j] = (uint32)strlen((char*)arg1);
-            bufs[j] = (char*)arg1;
-            *(uint32*)&data[0] = buf_len[j];
-            total_buf_len += ++buf_len[j];
-            j++;
+            binder << *(char**)arg1;
             break;
     }
 
-    for(i = 1; i < format_len; i++)
+    for(; i < format_len; i++)
     {
         switch(format[i])
         {
             case MYSQL_TYPE_BLOB:
-                buf_len[j] = va_arg(ap, uint32);
-                bufs[j] = va_arg(ap, char*);
-                *(uint32*)&data[i] = buf_len[j];
-                total_buf_len += buf_len[j];
-                j++;
+                binder.append(va_arg(ap, uint32), va_arg(ap, char*));
                 break;
             case MYSQL_TYPE_TINY:
-                *(char*)&data[i] = va_arg(ap, char);
+                binder << va_arg(ap, char);
                 break;
             case MYSQL_TYPE_LONG:
-                *(unsigned long*)&data[i] = va_arg(ap, unsigned long);
+                binder << va_arg(ap, unsigned long);
                 break;
             case MYSQL_TYPE_FLOAT:
-                *(float*)&data[i] = va_arg(ap, float);
+                binder << va_arg(ap, float);
                 break;
             case MYSQL_TYPE_STRING:
-                aux = va_arg(ap, char*);
-                buf_len[j] = (uint32)strlen(aux);
-                bufs[j] = aux;
-                *(uint32*)&data[i] = buf_len[j];
-                total_buf_len += ++buf_len[j];
-                j++;
+                binder << va_arg(ap, char*);
                 break;
         }
     }
 
-    char *buf;
-    if(nr_strings > 0)
-    {
-        buf = new char[total_buf_len];
-
-        j = 0;
-        for(i = 0; i < nr_strings; i++)
-        {
-            memcpy(&buf[j], bufs[i], buf_len[i]);
-            bufs[i] = &buf[j];
-            j += buf_len[i];
-        }
-    }
-
-    return Execute(raw_data);
+    return binder.Execute();
 }
 
 bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
@@ -367,6 +331,44 @@ bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)
 {
     return NULL;
+}
+
+MySQLPreparedStatementBinder::MySQLPreparedStatementBinder(MySQLPreparedStatement *stmt)
+    : m_stmt(stmt), m_poz(0), m_str_poz(0), m_total_buf_len(0)
+{
+    m_bind = new MYSQL_BIND[m_stmt->format_len];
+    memset(m_bind, 0, sizeof(m_bind));
+    // the other arrays are always overwritten
+    m_data = (uint64*)new char[m_stmt->format_len*sizeof(uint64)+m_stmt->nr_strings*sizeof(char*)];
+    m_bufs = (char**)&m_data[m_stmt->format_len];
+}
+
+bool MySQLPreparedStatementBinder::Execute()
+{
+    assert(m_poz == m_stmt->format_len && m_str_poz == m_stmt->nr_strings);
+    
+    if(m_stmt->nr_strings > 0)
+    {
+        // all strings are stored in one buffer
+        // the first string points to the start of the buffer
+        char *buf = new char[m_total_buf_len];
+
+        int j = 0;
+        for(int i = 0; i < m_stmt->nr_strings; i++)
+        {
+            uint32 format_idx = m_stmt->m_str_idx[i];
+            uint32 len = *(uint32*)&(m_stmt->m_data[format_idx]);
+            // one extra byte for the terminating '\0'
+            if(m_stmt->format[format_idx] == MYSQL_TYPE_STRING)
+                len++;
+
+            memcpy(&buf[j], m_bufs[i], len);
+            m_bufs[i] = &buf[j];
+            j += len;
+        }
+    }
+
+    return m_stmt->Execute((char*)m_data);
 }
 
 #endif
