@@ -25,6 +25,8 @@
 
 MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sql, va_list ap)
 {
+    ZThread::Guard<ZThread::FastMutex> query_connection_guard(db->mMutex);
+
     m_db = db;
     m_stmt = mysql_stmt_init(m_db->mMysql);
     if(!m_stmt)
@@ -139,8 +141,8 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
             case MYSQL_TYPE_BLOB:
             case MYSQL_TYPE_STRING:
                 buf_len = va_arg(ap, uint32);
-                m_bufs[i] = new char[buf_len];
-                _set_bind(m_bind[i], format[i], m_bufs[i], buf_len, (unsigned long*)&m_data[poz]);
+                m_bufs[str_poz] = new char[buf_len];
+                _set_bind(m_bind[i], format[i], m_bufs[str_poz], buf_len, (unsigned long*)&m_data[poz]);
                 m_str_idx[str_poz++] = i;
                 break;
             case MYSQL_TYPE_TINY:
@@ -162,6 +164,7 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
 
 MySQLPreparedStatement::~MySQLPreparedStatement()
 {
+    // TODO: call this from somewhere
     free(format);
     if(mysql_stmt_close(m_stmt))
         sLog.outError("failed while closing the prepared statement");
@@ -169,6 +172,8 @@ MySQLPreparedStatement::~MySQLPreparedStatement()
 
 bool MySQLPreparedStatement::DirectExecute()
 {
+    ZThread::Guard<ZThread::FastMutex> query_connection_guard(m_db->mMutex);
+
     if(mysql_stmt_execute(m_stmt))
     {
         // can this occur on query syntax error ?
@@ -211,7 +216,7 @@ bool MySQLPreparedStatement::Execute(char *raw_data)
 bool MySQLPreparedStatement::DirectExecute(char *raw_data)
 {
     memcpy(m_data, raw_data, format_len * sizeof(uint64));
-    char **bufs = (char**)&m_data[format_len];
+    char **bufs = (char**)&raw_data[format_len * sizeof(uint64)];
 
     for(int i = 0; i < nr_strings; i++)
         memcpy(m_bufs[i], bufs[i], *(uint32*)&m_data[m_str_idx[i]]);
