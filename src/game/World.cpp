@@ -974,6 +974,22 @@ void World::LoadConfigSettings(bool reload)
 /// Initialize the World
 void World::SetInitialWorldSettings()
 {
+    // test code
+    CharacterDatabase.DirectExecute("DROP TABLE IF EXISTS testtbl");
+    CharacterDatabase.DirectExecute("CREATE TABLE `testtbl` ("
+        "`float_col` float NOT NULL,"
+        "`int_col` mediumint(9) NOT NULL,"
+        "`char_col` tinyint(4) NOT NULL,"
+        "`s_col` varchar(100) default NULL,"
+        "`b_col` blob,"
+        "`s1_col` varchar(100) default NULL,"
+        "`b1_col` blob"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8");
+    
+    static PreparedStmt *stmt = CharacterDatabase.Prepare("INSERT INTO testtbl VALUES(%lf,%d,%c,%s,%b,%s,%b)", 100, 50, 100, 50);
+
+    stmt->PExecute(5.2, 6, 1, "asdf", 5, "fgfff", "w3tasd", 4, "2345");
+
     ///- Initialize the random number generator
     srand((unsigned int)time(NULL));
 

@@ -50,33 +50,51 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
                 if(*p == '\0')
                     break;
 
+                bool length_mod = false;
+                bool repeat;
+
                 *q = '?';
-                switch(*p)
+                do
                 {
-                    case 'b':
-                        nr_strings++;
-                        format[format_len++] = MYSQL_TYPE_BLOB;
-                        break;
-                    case 'c':
-                        format[format_len++] = MYSQL_TYPE_TINY;
-                        break;
-                    case 'd':
-                    case 'i':
-                    case 'u':
-                        format[format_len++] = MYSQL_TYPE_LONG;
-                        break;
-                    case 'f':
-                        format[format_len++] = MYSQL_TYPE_FLOAT;
-                        break;
-                    case 's':
-                        nr_strings++;
-                        format[format_len++] = MYSQL_TYPE_STRING;
-                        break;
-                    default:
-                        sLog.outError("MySQLPreparedStatement: unsupported format specified %c", *p);
-                        assert(false);
-                        break;
+                    repeat = false;
+
+                    switch(*p)
+                    {
+                        case 'b':
+                            nr_strings++;
+                            format[format_len++] = MYSQL_TYPE_BLOB;
+                            break;
+                        case 'c':
+                            format[format_len++] = MYSQL_TYPE_TINY;
+                            break;
+                        case 'd':
+                        case 'i':
+                        case 'u':
+                            format[format_len++] = MYSQL_TYPE_LONG;
+                            break;
+                        case 'f':
+                            format[format_len++] = length_mod ? MYSQL_TYPE_DOUBLE : MYSQL_TYPE_FLOAT;
+                            break;
+                        case 's':
+                            nr_strings++;
+                            format[format_len++] = MYSQL_TYPE_STRING;
+                            break;
+                        case 'l':
+                            if(!length_mod)
+                            {
+                                length_mod = true;
+                                repeat = true;
+                                p++;
+                                break;
+                            }
+                            // error otherwise
+                        default:
+                            sLog.outError("MySQLPreparedStatement: unsupported format specified %c", *p);
+                            assert(false);
+                            break;
+                    }
                 }
+                while(repeat == true);
             }
             else
                 *q = '%';
@@ -108,6 +126,8 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     m_str_idx = new int[format_len];
     m_bufs = new char*[nr_strings];
 
+    memset(m_bind, 0, format_len*sizeof(MYSQL_BIND));
+
     int poz = 0;
     int str_poz = 0;
     uint32 buf_len;
@@ -126,6 +146,8 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
             case MYSQL_TYPE_TINY:
             case MYSQL_TYPE_LONG:
             case MYSQL_TYPE_FLOAT:
+            case MYSQL_TYPE_DOUBLE:
+            case MYSQL_TYPE_LONGLONG:
                 _set_bind(m_bind[i], format[i], (char*)&m_data[poz], 0, NULL);
                 break;
         }
@@ -223,12 +245,11 @@ void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, 
 template< class B >
 void MySQLPreparedStatement::_parse_args(B &binder, void *arg1, va_list ap)
 {
-    int i = 0;
+    uint32 buf_len;
     switch(format[0])
     {
         case MYSQL_TYPE_BLOB:
             binder.append(*(uint32*)arg1, va_arg(ap, char*));
-            i++;
             break;
         case MYSQL_TYPE_TINY:
             binder << *(char*)arg1;
@@ -239,17 +260,22 @@ void MySQLPreparedStatement::_parse_args(B &binder, void *arg1, va_list ap)
         case MYSQL_TYPE_FLOAT:
             binder << *(float*)arg1;
             break;
+        case MYSQL_TYPE_DOUBLE:
+            binder << *(double*)arg1;
+            break;
         case MYSQL_TYPE_STRING:
             binder << *(char**)arg1;
             break;
     }
 
-    for(; i < format_len; i++)
+    for(int i = 1; i < format_len; i++)
     {
         switch(format[i])
         {
             case MYSQL_TYPE_BLOB:
-                binder.append(va_arg(ap, uint32), va_arg(ap, char*));
+                // argument evaluation order is unspecified, do this first
+                buf_len = va_arg(ap, uint32);
+                binder.append(buf_len, va_arg(ap, char*));
                 break;
             case MYSQL_TYPE_TINY:
                 binder << va_arg(ap, char);
@@ -259,6 +285,9 @@ void MySQLPreparedStatement::_parse_args(B &binder, void *arg1, va_list ap)
                 break;
             case MYSQL_TYPE_FLOAT:
                 binder << va_arg(ap, float);
+                break;
+            case MYSQL_TYPE_DOUBLE:
+                binder << va_arg(ap, double);
                 break;
             case MYSQL_TYPE_STRING:
                 binder << va_arg(ap, char*);
@@ -289,9 +318,6 @@ QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)
 MySQLPreparedStatementBinder::MySQLPreparedStatementBinder(MySQLPreparedStatement *stmt)
     : m_stmt(stmt), m_poz(0), m_str_poz(0), m_total_buf_len(0)
 {
-    m_bind = new MYSQL_BIND[m_stmt->format_len];
-    memset(m_bind, 0, sizeof(m_bind));
-    // the other arrays are always overwritten
     m_data = (uint64*)new char[m_stmt->format_len*sizeof(uint64)+m_stmt->nr_strings*sizeof(char*)];
     m_bufs = (char**)&m_data[m_stmt->format_len];
 }
@@ -310,7 +336,7 @@ bool MySQLPreparedStatementBinder::Execute()
         for(int i = 0; i < m_stmt->nr_strings; i++)
         {
             uint32 format_idx = m_stmt->m_str_idx[i];
-            uint32 len = *(uint32*)&(m_stmt->m_data[format_idx]);
+            uint32 len = *(uint32*)&m_data[format_idx];
             // one extra byte for the terminating '\0'
             if(m_stmt->format[format_idx] == MYSQL_TYPE_STRING)
                 len++;

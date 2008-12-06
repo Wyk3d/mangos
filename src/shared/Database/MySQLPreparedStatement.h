@@ -47,10 +47,11 @@ class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatem
         bool Execute(char *raw_data);
         bool DirectExecute(char *raw_data);
         void Free(char *raw_data);
-    private:
+
         bool _DirectPExecute(void *arg1, va_list ap);
         bool _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
+    private:
 
         static void _set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len);
         template< class B >
@@ -73,43 +74,51 @@ class MySQLPreparedStatement : public PreparedStatementBase< MySQLPreparedStatem
 
 class MySQLPreparedStatementBinder : public PreparedStatementAsyncBinderBase<MySQLPreparedStatementBinder>
 {
+    template< class D > friend class PreparedStatementBase;
     public:
         MySQLPreparedStatementBinder(MySQLPreparedStatement *stmt);
 
-        inline void append(unsigned long x)
+        void append(unsigned long x)
         {
             *(unsigned long*)&m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(float x)
+        void append(float x)
         {
             *(float*)&m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(char x)
+        void append(double x)
+        {
+            *(double*)&m_data[m_poz] = x;
+            m_poz++;
+        }
+
+
+        void append(char x)
         {
             *(char*)&m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(uint64 x)
+        void append(uint64 x)
         {
             *(uint64*)&m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(char *str)
+        void append(char *str)
         {
             uint32 len = strlen(str);
             *(uint32*)&m_data[m_poz] = len;
             m_bufs[m_str_poz] = str;
-            m_total_buf_len += len;
+            m_total_buf_len += len+1;
             m_poz++, m_str_poz++;
         }
 
-        inline void append(unsigned long len, char *buf)
+        void append(unsigned long len, char *buf)
         {
             *(uint32*)&m_data[m_poz] = len;
             m_bufs[m_str_poz] = buf;
@@ -122,7 +131,6 @@ class MySQLPreparedStatementBinder : public PreparedStatementAsyncBinderBase<MyS
     private:
 
         MySQLPreparedStatement * m_stmt;
-        MYSQL_BIND *m_bind;
         uint64 *m_data;
         char **m_bufs;
         uint32 m_poz;
@@ -132,50 +140,58 @@ class MySQLPreparedStatementBinder : public PreparedStatementAsyncBinderBase<MyS
 
 class MySQLPreparedStatementDirectBinder : public PreparedStatementDirectBinderBase<MySQLPreparedStatementDirectBinder>
 {
+    template< class D > friend class PreparedStatementBase;
     public:
         MySQLPreparedStatementDirectBinder(MySQLPreparedStatement *stmt);
 
-        inline void append(unsigned long x)
+        void append(unsigned long x)
         {
             *(unsigned long*)&m_stmt->m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(float x)
+        void append(float x)
         {
             *(float*)&m_stmt->m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(char x)
+        void append(double x)
+        {
+            *(double*)&m_stmt->m_data[m_poz] = x;
+            m_poz++;
+        }
+
+        void append(char x)
         {
             *(char*)&m_stmt->m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(uint64 x)
+        void append(uint64 x)
         {
             *(uint64*)&m_stmt->m_data[m_poz] = x;
             m_poz++;
         }
 
-        inline void append(char *str)
+        void append(char *str)
         {
             uint32 len = strlen(str);
-            memcpy(m_stmt->m_bufs[0], str, len+1);
+            memcpy(m_stmt->m_bufs[m_str_poz], str, len+1);
             m_poz++, m_str_poz++;
         }
 
-        inline void append(unsigned long len, char *buf)
+        void append(unsigned long len, char *buf)
         {
             *(uint32*)&m_stmt->m_data[m_poz] = len;
-            memcpy(m_stmt->m_bufs[0], buf, len);
+            memcpy(m_stmt->m_bufs[m_str_poz], buf, len);
             m_poz++, m_str_poz++;
         }
 
         bool DirectExecute();
 
     private:
+
         MySQLPreparedStatement * m_stmt;
         uint32 m_poz;
         uint32 m_str_poz;

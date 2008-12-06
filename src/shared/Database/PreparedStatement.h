@@ -36,14 +36,15 @@ class PreparedStatementBase
             { va_list ap; va_start(ap, arg1); bool ret = (static_cast<D*>(this))->_DirectPExecute((void*)&arg1, ap); va_end(ap); return ret; }
         // used as: void PExecute(...);
         template<class T> bool PExecute(T arg1, ...)
-            { va_list ap; va_start(ap, arg1); bool ret = (static_cast<D*>(this))->_PExecute((void*)&arg1, ap); va_end(ap); return ret}
+            { va_list ap; va_start(ap, arg1); bool ret = (static_cast<D*>(this))->_PExecute((void*)&arg1, ap); va_end(ap); return ret; }
         // used as: QueryResult * PQuery(...);
         template<class T> QueryResult * PQuery(T arg1, ...)
             { va_list ap; va_start(ap, arg1); QueryResult * ret = (static_cast<D*>(this))->_PQuery((void*)&arg1, ap); va_end(ap); return ret; }
 
         bool Execute(char *raw_data);
         bool DirectExecute(char *raw_data);
-    private:
+
+        // cannot access these if they are private
         bool _DirectPExecute(void *arg1, va_list ap);
         bool _PExecute(void *arg1, va_list ap);
         QueryResult * _PQuery(void *arg1, va_list ap);
@@ -62,6 +63,7 @@ class PreparedStatementBinderBase
 
         void append(unsigned long x);
         void append(float x);
+        void append(double x);
         void append(char x);
         void append(uint64 x);
         void append(char *str);
