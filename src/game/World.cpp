@@ -988,7 +988,14 @@ void World::SetInitialWorldSettings()
     
     static PreparedStmt *stmt = CharacterDatabase.Prepare("INSERT INTO testtbl VALUES(%lf,%d,%c,%s,%b,%s,%b)", 100, 50, 100, 50);
 
+    stmt->DirectPExecute(11.3, 7, 8, "dasd", 3, "asd", "fff", 1, "2");
     stmt->PExecute(5.2, 6, 1, "asdf", 5, "fgfff", "w3tasd", 4, "2345");
+
+    CharacterDatabase.BeginTransaction();  
+    stmt->PExecute(9.2, 4, 4, "wert", 4, "hbhh", "ggg", 3, "444");
+    CharacterDatabase.Execute("INSERT INTO testtbl VALUES(8.2, 1, 2, 'aaa','bbb','ccc','ddd')");
+    CharacterDatabase.CommitTransaction();
+    
 
     ///- Initialize the random number generator
     srand((unsigned int)time(NULL));

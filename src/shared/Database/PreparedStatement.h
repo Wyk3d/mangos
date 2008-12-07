@@ -32,7 +32,7 @@ class PreparedStatementBase
         QueryResult * Query();
 
         // used as: void DirectPExecute(...);
-        template<class T> void DirectPExecute(T arg1, ...)
+        template<class T> bool DirectPExecute(T arg1, ...)
             { va_list ap; va_start(ap, arg1); bool ret = (static_cast<D*>(this))->_DirectPExecute((void*)&arg1, ap); va_end(ap); return ret; }
         // used as: void PExecute(...);
         template<class T> bool PExecute(T arg1, ...)

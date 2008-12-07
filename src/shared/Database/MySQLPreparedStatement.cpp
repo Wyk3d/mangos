@@ -203,7 +203,7 @@ bool MySQLPreparedStatement::Execute(char *raw_data)
     TransactionQueues::iterator i = m_db->m_tranQueues.find(m_db->tranThread);
     if (i != m_db->m_tranQueues.end() && i->second != NULL)
     {                                                       // Statement for transaction
-        i->second->DelayExecute(raw_data, this);
+        i->second->DelayExecute(this, raw_data);
     }
     else
     {
@@ -226,7 +226,7 @@ bool MySQLPreparedStatement::DirectExecute(char *raw_data)
 
 void MySQLPreparedStatement::Free(char *raw_data)
 {
-    char **bufs = (char**)&raw_data[format_len];
+    char **bufs = (char**)&raw_data[format_len*sizeof(uint64)];
     // all strings are stored in one buffer
     // the first string points to the start of the buffer
     if(nr_strings > 0)

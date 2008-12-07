@@ -60,7 +60,7 @@ class SqlPreparedStatement : public SqlOperation
         char *m_data;
     public:
         SqlPreparedStatement(PreparedStmt *stmt, char *data) : m_stmt(stmt), m_data(data) {}
-        ~SqlPreparedStatement() {}
+        ~SqlPreparedStatement() { m_stmt->Free(m_data); }
         void Execute(Database *db);
 };
 
@@ -72,7 +72,8 @@ class SqlTransaction : public SqlOperation
         std::queue<StmtPair> m_queue;
     public:
         SqlTransaction() {}
-        void DelayExecute(const char *sql, PreparedStmt *stmt = NULL) { m_queue.push(StmtPair(stmt, strdup(sql))); }
+        void DelayExecute(const char *sql) { m_queue.push(StmtPair(NULL, strdup(sql))); }
+        void DelayExecute(PreparedStmt *stmt, const char *data) { m_queue.push(StmtPair(stmt, data)); }
         void Execute(Database *db);
 };
 

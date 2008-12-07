@@ -177,6 +177,7 @@ class MySQLPreparedStatementDirectBinder : public PreparedStatementDirectBinderB
         void append(char *str)
         {
             uint32 len = strlen(str);
+            *(uint32*)&m_stmt->m_data[m_poz] = len;
             memcpy(m_stmt->m_bufs[m_str_poz], str, len+1);
             m_poz++, m_str_poz++;
         }

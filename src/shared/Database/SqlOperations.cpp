@@ -46,30 +46,32 @@ void SqlTransaction::Execute(Database *db)
         char *data = const_cast<char*>(pair.second);
         m_queue.pop();
 
+        bool success;
+
         if(pair.first == NULL)
         {
             // pair.second is the sql statement
-            if(!db->DirectExecute(data))
-            {
-                free((void*)data);
-                db->DirectExecute("ROLLBACK");
-                while(!m_queue.empty())
-                {
-                    if(m_queue.front().first)
-                        m_queue.front().first->Free(const_cast<char*>(m_queue.front().second));
-                    else
-                        free((void*)const_cast<char*>(m_queue.front().second));
-                    m_queue.pop();
-                }
-                return;
-            }
+            success = db->DirectExecute(data);
             free((void*)data);
         }
         else
         {
             // pair.second is the data (parameters) passed to the prepared statement
-            pair.first->DirectExecute(data);
+            success = pair.first->DirectExecute(data);
             pair.first->Free(data);
+        }
+
+        if(!success)
+        {
+            db->DirectExecute("ROLLBACK");
+            while(!m_queue.empty())
+            {
+                if(m_queue.front().first)
+                    m_queue.front().first->Free(const_cast<char*>(m_queue.front().second));
+                else
+                    free((void*)const_cast<char*>(m_queue.front().second));
+                m_queue.pop();
+            }
         }
     }
     db->DirectExecute("COMMIT");
