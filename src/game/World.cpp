@@ -991,7 +991,7 @@ void World::SetInitialWorldSettings()
     stmt->DirectPExecute(11.3, 7, 8, "dasd", 3, "asd", "fff", 1, "2");
     stmt->PExecute(5.2, 6, 1, "asdf", 5, "fgfff", "w3tasd", 4, "2345");
 
-    CharacterDatabase.BeginTransaction();  
+    CharacterDatabase.BeginTransaction();
     stmt->PExecute(9.2, 4, 4, "wert", 4, "hbhh", "ggg", 3, "444");
     CharacterDatabase.Execute("INSERT INTO testtbl VALUES(8.2, 1, 2, 'aaa','bbb','ccc','ddd')");
     CharacterDatabase.CommitTransaction();

@@ -58,6 +58,10 @@ DatabaseMysql::DatabaseMysql() : Database(), mMysql(0)
 
 DatabaseMysql::~DatabaseMysql()
 {
+    /*Delete prepared statements before closing the mysql session*/
+    for(PreparedStmtList::iterator itr = m_preparedStmtList.begin(); itr != m_preparedStmtList.end(); ++itr)
+        delete *itr;
+
     if (m_delayThread)
         HaltDelayThread();
 
@@ -412,6 +416,7 @@ PreparedStmt * DatabaseMysql::Prepare(const char *statement, ...)
     va_list ap;
     va_start(ap, statement);
     PreparedStmt * ret = new MySQLPreparedStatement(this, statement, ap);
+    m_preparedStmtList.push_back(ret);
     va_end(ap);
     return ret;
 }

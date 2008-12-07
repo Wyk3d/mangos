@@ -162,12 +162,26 @@ MySQLPreparedStatement::MySQLPreparedStatement(DatabaseMysql *db, const char *sq
     }
 }
 
+void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len)
+{
+    bind.buffer_type = type;
+    bind.buffer = value;
+    bind.buffer_length = buf_len;
+    bind.length = len;
+}
+
 MySQLPreparedStatement::~MySQLPreparedStatement()
 {
-    // TODO: call this from somewhere
+    // called from Database::~Database
     free(format);
     if(mysql_stmt_close(m_stmt))
         sLog.outError("failed while closing the prepared statement");
+    delete[] m_bind;
+    delete[] m_data;
+    delete[] m_str_idx;
+    for(int i = 0; i < nr_strings; i++)
+        delete[] m_bufs[i];
+    delete[] m_bufs;
 }
 
 bool MySQLPreparedStatement::DirectExecute()
@@ -188,6 +202,17 @@ bool MySQLPreparedStatement::DirectExecute()
 bool MySQLPreparedStatement::Execute()
 {
     return Execute(NULL);
+}
+
+bool MySQLPreparedStatement::DirectExecute(char *raw_data)
+{
+    memcpy(m_data, raw_data, format_len * sizeof(uint64));
+    char **bufs = (char**)&raw_data[format_len * sizeof(uint64)];
+
+    for(int i = 0; i < nr_strings; i++)
+        memcpy(m_bufs[i], bufs[i], *(uint32*)&m_data[m_str_idx[i]]);
+    
+    return DirectExecute();
 }
 
 bool MySQLPreparedStatement::Execute(char *raw_data)
@@ -213,17 +238,6 @@ bool MySQLPreparedStatement::Execute(char *raw_data)
     return true;
 }
 
-bool MySQLPreparedStatement::DirectExecute(char *raw_data)
-{
-    memcpy(m_data, raw_data, format_len * sizeof(uint64));
-    char **bufs = (char**)&raw_data[format_len * sizeof(uint64)];
-
-    for(int i = 0; i < nr_strings; i++)
-        memcpy(m_bufs[i], bufs[i], *(uint32*)&m_data[m_str_idx[i]]);
-    
-    return DirectExecute();
-}
-
 void MySQLPreparedStatement::Free(char *raw_data)
 {
     char **bufs = (char**)&raw_data[format_len*sizeof(uint64)];
@@ -232,19 +246,6 @@ void MySQLPreparedStatement::Free(char *raw_data)
     if(nr_strings > 0)
         delete[] bufs[0];
     delete[] raw_data;
-}
-
-QueryResult * MySQLPreparedStatement::Query()
-{
-    return NULL;
-}
-
-void MySQLPreparedStatement::_set_bind(MYSQL_BIND &bind, enum_field_types type, char *value, unsigned long buf_len, unsigned long *len)
-{
-    bind.buffer_type = type;
-    bind.buffer = value;
-    bind.buffer_length = buf_len;
-    bind.length = len;
 }
 
 template< class B >
@@ -301,6 +302,13 @@ void MySQLPreparedStatement::_parse_args(B &binder, void *arg1, va_list ap)
     }
 }
 
+bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
+{
+    MySQLPreparedStatementDirectBinder binder(this);
+    _parse_args(binder, arg1, ap);
+    return binder.DirectExecute();
+}
+
 bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
     MySQLPreparedStatementBinder binder(this);
@@ -308,11 +316,9 @@ bool MySQLPreparedStatement::_PExecute(void *arg1, va_list ap)
     return binder.Execute();
 }
 
-bool MySQLPreparedStatement::_DirectPExecute(void *arg1, va_list ap)
+QueryResult * MySQLPreparedStatement::Query()
 {
-    MySQLPreparedStatementDirectBinder binder(this);
-    _parse_args(binder, arg1, ap);
-    return binder.DirectExecute();
+    return NULL;
 }
 
 QueryResult * MySQLPreparedStatement::_PQuery(void *arg1, va_list ap)

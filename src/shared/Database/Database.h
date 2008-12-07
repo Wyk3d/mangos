@@ -44,6 +44,9 @@ class MANGOS_DLL_SPEC Database
         SqlDelayThread* m_threadBody;                       ///< Pointer to delay sql executer
         ZThread::Thread* m_delayThread;                     ///< Pointer to executer thread
 
+        typedef std::list<PreparedStmt*> PreparedStmtList;
+        PreparedStmtList m_preparedStmtList;
+
     public:
 
         virtual ~Database();
@@ -119,6 +122,6 @@ class MANGOS_DLL_SPEC Database
 
     private:
         bool m_logSQL;
-        std::string m_logsDir;
+        std::string m_logsDir; 
 };
 #endif
