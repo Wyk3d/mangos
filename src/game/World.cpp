@@ -971,14 +971,78 @@ void World::LoadConfigSettings(bool reload)
     sLog.outString( "WORLD: VMap config keys are: vmap.enableLOS, vmap.enableHeight, vmap.ignoreMapIds, vmap.ignoreSpellIds");
 }
 
+#define NUM_COLS 100
+
+PreparedStmt *MyGenPrepare()
+{
+    std::ostringstream ss;
+    ss << "INSERT INTO `testtbl1` VALUES (";
+    for(int i = 0; i < NUM_COLS; i++)
+        ss << (i == 0 ? "" : ", ") << "%d";
+    ss << ")";
+    return CharacterDatabase.Prepare(ss.str().c_str());
+}
+
 /// Initialize the World
 void World::SetInitialWorldSettings()
 {
     ///- Initialize the random number generator
     srand((unsigned int)time(NULL));
 
-        // test code
+    // test code
     clock_t start, end;
+
+    CharacterDatabase.DirectExecute("DROP TABLE IF EXISTS testtbl1");
+    std::ostringstream ss;
+    ss << "CREATE TABLE `testtbl1` (";
+    for(int i = 0; i < NUM_COLS; i++)
+        ss << (i == 0 ? "" : ",") << "`col" << i << "` mediumint(9) NOT NULL";
+    ss << ") ENGINE=InnoDB DEFAULT CHARSET=utf8";
+    CharacterDatabase.DirectExecute(ss.str().c_str());
+
+    static PreparedStmt *stmt4 = MyGenPrepare();
+
+    static PreparedStmt *stmt3 = CharacterDatabase.Prepare("DELETE FROM testtbl");
+    static PreparedStmt *stmt5 = CharacterDatabase.Prepare("DELETE FROM testtbl1");
+    
+    clock_t total1 = 0, total2 = 0;
+
+    int i, j, k;
+
+    for(j = 0; j < 10; j++)
+    {
+        start = clock();
+        for(i = 0; i < 30; i++)
+        {
+            PSBinder binder(stmt4);
+            for(k = 0; k < NUM_COLS; k++)
+                binder << (unsigned long)urand(0, 10000);
+            binder.Execute();
+        }
+        end = clock();
+        total1 += (end-start);
+        
+        stmt5->Execute();
+
+        start = clock();
+        for(i = 0; i < 30; i++)
+        {
+            std::ostringstream ss;
+            ss << "INSERT INTO testtbl1 VALUES(";
+            for(k = 0; k < NUM_COLS; k++)
+                ss << (k == 0 ? "" : ", ") << urand(0, 10000);
+            ss << ")";
+            CharacterDatabase.Execute(ss.str().c_str());
+        }
+        end = clock();
+        total2 += (end-start);
+
+        stmt5->Execute();
+    }
+
+    sLog.outString("Time1: %f\nTime2: %f", (float)(total1)/CLK_TCK, (float)(total2)/CLK_TCK);
+
+    //exit(0);
 
     CharacterDatabase.DirectExecute("DROP TABLE IF EXISTS testtbl");
     CharacterDatabase.DirectExecute("CREATE TABLE `testtbl` ("
@@ -991,23 +1055,19 @@ void World::SetInitialWorldSettings()
         "`b1_col` blob"
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8");
 
-    static PreparedStmt *stmt3 = CharacterDatabase.Prepare("DELETE FROM testtbl");
-    
     static PreparedStmt *stmt = CharacterDatabase.Prepare("INSERT INTO testtbl VALUES(%lf,%d,%c,%s,%b,%s,%b)", 100, 50, 100, 50);
 
-    int i, j;
-
-    clock_t total1 = 0, total2 = 0;
+    total1 = 0, total2 = 0;
 
     char buf[101];
 
-    for(j = 0; j < 100; j++)
+    for(j = 0; j < 300; j++)
     {
         start = clock();
-        for(i = 0; i < 100; i++)
+        for(i = 0; i < 30; i++)
         {
-          int len = 5+urand(0,15);
-          for(int k = 0; k < len; k++)
+          int len = 1+urand(0,5);
+          for(k = 0; k < len; k++)
               buf[k] = 'a'+urand(0, 'z'-'a');
           buf[len] = 0;
 
@@ -1019,10 +1079,10 @@ void World::SetInitialWorldSettings()
         stmt3->Execute();
 
         start = clock();
-        for(i = 0; i < 100; i++)
+        for(i = 0; i < 30; i++)
         {
-            int len = 5+urand(0,15);
-            for(int k = 0; k < len; k++)
+            int len = 1+urand(0,5);
+            for(k = 0; k < len; k++)
                 buf[k] = 'a'+urand(0, 'z'-'a');
             buf[len] = 0;
 
