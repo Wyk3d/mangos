@@ -264,7 +264,7 @@ bool DatabaseMysql::DirectExecute(const char* sql)
         // guarded block for thread-safe mySQL request
         ZThread::Guard<ZThread::FastMutex> query_connection_guard(mMutex);
         #ifdef MANGOS_DEBUG
-        uint32 _s = getMSTime();
+        //uint32 _s = getMSTime();
         #endif
         if(mysql_query(mMysql, sql))
         {
@@ -275,7 +275,7 @@ bool DatabaseMysql::DirectExecute(const char* sql)
         else
         {
             #ifdef MANGOS_DEBUG
-            sLog.outDebug("[%u ms] SQL: %s", getMSTimeDiff(_s,getMSTime()), sql );
+            //sLog.outDebug("[%u ms] SQL: %s", getMSTimeDiff(_s,getMSTime()), sql );
             #endif
         }
         // end guarded block

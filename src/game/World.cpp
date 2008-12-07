@@ -974,7 +974,12 @@ void World::LoadConfigSettings(bool reload)
 /// Initialize the World
 void World::SetInitialWorldSettings()
 {
-    // test code
+    ///- Initialize the random number generator
+    srand((unsigned int)time(NULL));
+
+        // test code
+    clock_t start, end;
+
     CharacterDatabase.DirectExecute("DROP TABLE IF EXISTS testtbl");
     CharacterDatabase.DirectExecute("CREATE TABLE `testtbl` ("
         "`float_col` float NOT NULL,"
@@ -985,20 +990,63 @@ void World::SetInitialWorldSettings()
         "`s1_col` varchar(100) default NULL,"
         "`b1_col` blob"
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8");
+
+    static PreparedStmt *stmt3 = CharacterDatabase.Prepare("DELETE FROM testtbl");
     
     static PreparedStmt *stmt = CharacterDatabase.Prepare("INSERT INTO testtbl VALUES(%lf,%d,%c,%s,%b,%s,%b)", 100, 50, 100, 50);
+
+    int i, j;
+
+    clock_t total1 = 0, total2 = 0;
+
+    char buf[101];
+
+    for(j = 0; j < 100; j++)
+    {
+        start = clock();
+        for(i = 0; i < 100; i++)
+        {
+          int len = 5+urand(0,15);
+          for(int k = 0; k < len; k++)
+              buf[k] = 'a'+urand(0, 'z'-'a');
+          buf[len] = 0;
+
+          stmt->DirectPExecute(abs(rand_norm())*10000, urand(0,10000), (char)('a'+urand(0, 'z'-'a')), buf, len, buf, buf, len, buf);
+        }
+        end = clock();
+        total1 += (end-start);
+        
+        stmt3->Execute();
+
+        start = clock();
+        for(i = 0; i < 100; i++)
+        {
+            int len = 5+urand(0,15);
+            for(int k = 0; k < len; k++)
+                buf[k] = 'a'+urand(0, 'z'-'a');
+            buf[len] = 0;
+
+            CharacterDatabase.DirectPExecute("INSERT INTO testtbl VALUES('%lf','%d','%d','%s','%s','%s','%s')", abs(rand_norm())*10000, urand(0,10000), (char)('a'+urand(0, 'z'-'a')), buf, buf, buf, buf);
+        }
+        end = clock();
+        total2 += (end-start);
+
+        stmt3->Execute();
+    }
+
+    sLog.outString("Time1: %f\nTime2: %f", (float)(total1)/CLK_TCK, (float)(total2)/CLK_TCK);
 
     stmt->DirectPExecute(11.3, 7, 8, "dasd", 3, "asd", "fff", 1, "2");
     stmt->PExecute(5.2, 6, 1, "asdf", 5, "fgfff", "w3tasd", 4, "2345");
 
+    static PreparedStmt *stmt2 = CharacterDatabase.Prepare("UPDATE testtbl SET float_col=%lf WHERE int_col=%d");
+    stmt2->DirectPExecute(1.1, 7);
+    stmt2->PExecute(3.3, 7);
+    
     CharacterDatabase.BeginTransaction();
     stmt->PExecute(9.2, 4, 4, "wert", 4, "hbhh", "ggg", 3, "444");
     CharacterDatabase.Execute("INSERT INTO testtbl VALUES(8.2, 1, 2, 'aaa','bbb','ccc','ddd')");
     CharacterDatabase.CommitTransaction();
-    
-
-    ///- Initialize the random number generator
-    srand((unsigned int)time(NULL));
 
     ///- Initialize config settings
     LoadConfigSettings();
