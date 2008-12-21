@@ -38,7 +38,7 @@ void DatabasePostgre::ThreadEnd()
 
 size_t DatabasePostgre::db_count = 0;
 
-DatabasePostgre::DatabasePostgre() : Database(), mPGconn(NULL)
+DatabasePostgre::DatabasePostgre() : Database(), mPGconn(NULL), preparedCounter(0)
 {
     // before first connection
     if( db_count++ == 0 )
@@ -344,9 +344,14 @@ void DatabasePostgre::HaltDelayThread()
     m_threadBody = NULL;
 }
 
-PreparedStmt * DatabasePostgre::Prepare(const char *statement)
+PreparedStmt * DatabasePostgre::Prepare(const char *statement,...)
 {
-    return new PGSQLPreparedStatement(this, sql);
+	va_list ap;
+    va_start(ap, statement);
+    PreparedStmt * ret = new PGSQLPreparedStatement(this, statement);
+    m_preparedStmtList.push_back(ret);
+    va_end(ap);
+    return ret; 
 }
 
 #endif

@@ -38,6 +38,9 @@ class PGSQLPreparedStatement : public PreparedStatementBase< PGSQLPreparedStatem
         QueryResult * _PQuery(void *arg1, va_list ap);
 
         DatabasePostgre *m_db;
+		char *stmtName;
+		int format_len;
+		Oid *format;
 };
 
 template< uint32 N >

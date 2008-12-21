@@ -369,6 +369,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\shared\Database\DatabasePostgre.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\shared\Database\DatabasePostgre.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\shared\Database\DatabaseSqlite.cpp"
 				>
 			</File>

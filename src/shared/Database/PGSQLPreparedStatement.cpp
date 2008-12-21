@@ -22,12 +22,23 @@
 
 PGSQLPreparedStatement::PGSQLPreparedStatement(DatabasePostgre *db, const char *sql)
 {
+	ZThread::Guard<ZThread::FastMutex> query_connection_guard(db->mMutex);
+	m_db = db;
 
+	// generate a unique statement name
+	char buf[1024];
+	snprintf(buf, 1024, "s%d", m_db->preparedCounter++);
+	int len = (int)strnlen(buf, 1024);
+	stmtName = new char[len+1];
+	memcpy(stmtName, buf, len+1);
+
+	// do the prepare
+	PQprepare(m_db->mPGconn, stmtName, sql, format_len, format);
 }
 
-void PGSQLPreparedStatement::Execute()
+bool PGSQLPreparedStatement::Execute()
 {
-
+	return true;
 }
 
 QueryResult * PGSQLPreparedStatement::Query()
@@ -35,9 +46,9 @@ QueryResult * PGSQLPreparedStatement::Query()
     return NULL;
 }
 
-void PGSQLPreparedStatement::_PExecute(void *arg1, va_list ap)
+bool PGSQLPreparedStatement::_PExecute(void *arg1, va_list ap)
 {
-
+	return true;
 }
 
 QueryResult * PGSQLPreparedStatement::_PQuery(void *arg1, va_list ap)

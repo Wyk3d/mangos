@@ -34,6 +34,7 @@
 class DatabasePostgre : public Database
 {
     friend class MaNGOS::OperatorNew<DatabasePostgre>;
+	friend class PGSQLPreparedStatement;
 
     public:
         DatabasePostgre();
@@ -50,7 +51,7 @@ class DatabasePostgre : public Database
         bool BeginTransaction();
         bool CommitTransaction();
         bool RollbackTransaction();
-        PreparedStmt * Prepare(const char *statement);
+        PreparedStmt * Prepare(const char *statement, ...);
 
         operator bool () const { return mPGconn != NULL; }
 
@@ -70,6 +71,8 @@ class DatabasePostgre : public Database
         PGconn *mPGconn;
 
         static size_t db_count;
+
+		uint32 preparedCounter;
 
         bool _TransactionCmd(const char *sql);
 };

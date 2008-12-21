@@ -44,6 +44,8 @@ class PreparedStatementBase
         bool Execute(char *raw_data);
         bool DirectExecute(char *raw_data);
 
+		void Free(char *raw_data);
+
         // cannot access these if they are private
         bool _DirectPExecute(void *arg1, va_list ap);
         bool _PExecute(void *arg1, va_list ap);
